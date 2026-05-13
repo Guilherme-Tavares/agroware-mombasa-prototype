@@ -3,6 +3,7 @@ import { useAuthStore } from '@/store/useAuthStore'
 import Header from './Header'
 import Sidebar from './Sidebar'
 import MobileBottomNav from './MobileBottomNav'
+import AnimatedOutlet from './AnimatedOutlet'
 
 export function ProtectedRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -19,9 +20,8 @@ export default function AppShell() {
         <Header />
 
         <main className="flex-1 overflow-y-auto" id="main-content">
-          {/* pb-16 reserva espaço para o nav mobile (56px + 8px) */}
           <div className="p-4 lg:p-6 pb-20 lg:pb-6">
-            <Outlet />
+            <AnimatedOutlet />
           </div>
         </main>
       </div>
