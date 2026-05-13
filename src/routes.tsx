@@ -1,5 +1,5 @@
-import { createBrowserRouter, Outlet, Navigate } from 'react-router-dom'
-import { useAuthStore } from '@/store/useAuthStore'
+import { createBrowserRouter } from 'react-router-dom'
+import AppShell, { ProtectedRoute } from '@/components/layout/AppShell.tsx'
 import Login from '@/pages/Login/index.tsx'
 import Dashboard from '@/pages/Dashboard/index.tsx'
 import MapPage from '@/pages/Map/index.tsx'
@@ -9,26 +9,17 @@ import DivisionRegister from '@/pages/DivisionRegister/index.tsx'
 import HerdRegister from '@/pages/HerdRegister/index.tsx'
 import HerdAllocation from '@/pages/HerdAllocation/index.tsx'
 import FeedTroughDetail from '@/pages/FeedTroughDetail/index.tsx'
-
-function ProtectedRoute() {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  if (!isAuthenticated) return <Navigate to="/login" replace />
-  return <Outlet />
-}
-
-// AppShell — placeholder para Etapa 2 (receberá Header + Sidebar)
-function AppShell() {
-  return (
-    <div>
-      <Outlet />
-    </div>
-  )
-}
+import DevComponents from '@/pages/DevComponents/index.tsx'
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     element: <Login />,
+  },
+  // Rota de desenvolvimento — fora do AppShell e sem proteção de auth
+  {
+    path: '/dev/components',
+    element: <DevComponents />,
   },
   {
     element: <ProtectedRoute />,
