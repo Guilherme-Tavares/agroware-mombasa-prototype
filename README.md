@@ -2,7 +2,7 @@
 
 Protótipo navegável de alta fidelidade do **Agroware Mombasa**, sistema de gestão pecuária focado em recria e engorda de bovinos machos em regime semi-intensivo. Construído em React + TypeScript.
 
-> **Status:** Etapa 1 concluída (Fundações). Etapas 2–4 em desenvolvimento.
+> **Status:** Step 3 em andamento — Login, Dashboard e Mapa Interativo concluídos.
 
 ---
 
@@ -25,17 +25,17 @@ O Agroware Mombasa é um PWA mobile-first que substitui controles manuais por um
 
 **Telas previstas:**
 
-| # | Tela | Rota |
-|---|---|---|
-| 1 | Login / Onboarding | `/login` |
-| 2 | Dashboard | `/` |
-| 3 | Mapa Interativo + painel lateral | `/map` |
-| 4 | Demarcação de propriedade | `/demarcation` |
-| 5 | Cadastro de bovino | `/bovines/new` |
-| 6 | Cadastro de divisão | `/divisions/new` |
-| 7 | Cadastro de rebanho | `/herds/new` |
-| 8 | Operação de lotação | `/operations/allocation` |
-| 9 | Detalhe de cocho (Sistema HP) | `/feed-troughs/:id` |
+| # | Tela | Rota | Status |
+|---|---|---|---|
+| 1 | Login / Onboarding | `/login` | ✅ |
+| 2 | Dashboard | `/` | ✅ |
+| 3 | Mapa Interativo + painel lateral | `/map` | ✅ |
+| 4 | Demarcação de propriedade | `/demarcation` | ⏳ |
+| 5 | Cadastro de bovino | `/bovines/new` | ⏳ |
+| 6 | Cadastro de divisão | `/divisions/new` | ⏳ |
+| 7 | Cadastro de rebanho | `/herds/new` | ⏳ |
+| 8 | Operação de lotação | `/operations/allocation` | ⏳ |
+| 9 | Detalhe de cocho (Sistema HP) | `/feed-troughs/:id` | ⏳ |
 
 ---
 
@@ -91,33 +91,48 @@ import('@/data/seed').then(m => m.resetToMock())
 
 ```
 src/
-├── assets/             # Logo e ilustrações SVG (Etapa 2)
+├── assets/
+│   └── illustrations/
+│       └── PastoralScene.tsx   # Ilustração SVG da tela de Login
 ├── components/
-│   ├── ui/             # Primitivos: Button, Input, Card, Badge, Modal, Toast...
-│   ├── layout/         # AppShell, Header, Sidebar, MobileBottomNav
-│   ├── domain/         # CattleIcon, FeedTroughMarker, HPBar...
-│   └── map/            # StylizedFarmMap, MapLayerToggle, MapControls
+│   ├── ui/                     # Primitivos: Button, Input, Card, Badge, Modal,
+│   │                           #   BottomSheet, Toast, Skeleton, EmptyState
+│   ├── layout/                 # AppShell, Header, Sidebar, MobileBottomNav,
+│   │                           #   AnimatedOutlet (fade-slide entre rotas)
+│   ├── domain/                 # CattleIcon, FeedTroughMarker, HPBar...
+│   └── map/
+│       ├── StylizedFarmMap.tsx # SVG inline com 6 camadas + pan/zoom
+│       ├── MapControls.tsx     # ZoomControls, LayerTogglePanel, MapStyleToggle
+│       └── DetailPanel.tsx     # Painel lateral: DivisionDetail, HerdDetail, TroughDetail
 ├── data/
-│   ├── mockFarm.ts     # Dataset Fazenda São José completo
-│   └── seed.ts         # seedIfEmpty() + resetToMock()
-├── hooks/              # useLocalStorage, useResponsive, useToast (Etapa 2)
-├── pages/              # Uma pasta por tela (Login, Dashboard, Map...)
+│   ├── mockFarm.ts             # Dataset Fazenda São José completo
+│   └── seed.ts                 # seedIfEmpty() + resetToMock()
+├── hooks/
+│   ├── useResponsive.ts        # isMobile / isTablet / isDesktop
+│   ├── useMapPanZoom.ts        # Pan/zoom via Pointer Events + wheel não-passivo
+│   └── useToast.ts
+├── pages/
+│   ├── Login/                  # Layout dividido, modos email/offline, animações
+│   ├── Dashboard/              # KPIs animados, mapa preview, alertas, gráfico GMD
+│   ├── Map/                    # Mapa interativo completo + controles flutuantes
+│   └── ...                     # Demais telas (placeholders)
 ├── store/
-│   ├── useFarmStore.ts # Propriedade, divisões, rebanhos, bovinos, cochos
-│   ├── useAuthStore.ts # Sessão local
-│   └── useUIStore.ts   # Toasts, sidebar, camadas do mapa
+│   ├── useFarmStore.ts         # Propriedade, divisões, rebanhos, bovinos, cochos
+│   ├── useAuthStore.ts         # Sessão local
+│   └── useUIStore.ts           # Toasts, sidebar, camadas do mapa
 ├── styles/
-│   └── globals.css     # Tailwind directives + @layer customizados
+│   └── globals.css             # Tailwind directives + @layer customizados
 ├── types/
-│   └── domain.ts       # Interfaces de domínio
+│   └── domain.ts               # Interfaces de domínio
 ├── utils/
-│   ├── gmd.ts          # Ganho Médio Diário
-│   ├── stocking-rate.ts# Taxa de lotação (UA/ha)
-│   ├── hp-system.ts    # Sistema HP de cochos
-│   ├── format.ts       # Formatadores pt-BR
-│   └── storage.ts      # Wrapper tipado de localStorage
-├── routes.tsx          # createBrowserRouter com todas as rotas
-└── App.tsx             # RouterProvider
+│   ├── geometry.ts             # polygonCentroid, polygonToPoints (Shoelace)
+│   ├── gmd.ts                  # Ganho Médio Diário
+│   ├── stocking-rate.ts        # Taxa de lotação (UA/ha)
+│   ├── hp-system.ts            # Sistema HP de cochos
+│   ├── format.ts               # Formatadores pt-BR
+│   └── storage.ts              # Wrapper tipado de localStorage
+├── routes.tsx                  # createBrowserRouter com todas as rotas
+└── App.tsx                     # RouterProvider
 ```
 
 ---
@@ -153,11 +168,11 @@ Todos os dados ficam em `src/data/mockFarm.ts` e são carregados automaticamente
 
 ## Status de implementação
 
-| Etapa | Descrição | Status |
+| Step | Descrição | Status |
 |---|---|---|
 | **1. Fundações** | Configs, tipos, mock data, utils, stores, seed, rotas placeholder | ✅ Concluída |
-| **2. Sistema de componentes** | Button, Input, Card, Badge, Modal, AppShell, Sidebar, Nav | ⏳ Pendente |
-| **3. Telas** | Login, Dashboard, Mapa, Demarcação, Cadastros, Operações, HP | ⏳ Pendente |
+| **2. Sistema de componentes** | Button, Input, Card, Badge, Modal, AppShell, Sidebar, Nav, AnimatedOutlet | ✅ Concluída |
+| **3. Telas** | Login ✅ · Dashboard ✅ · Mapa ✅ · Demarcação ⏳ · Cadastros ⏳ · Lotação ⏳ · HP ⏳ | 🔄 Em andamento |
 | **4. Polimento** | Animações, responsividade, estados (loading/empty/error), PWA final | ⏳ Pendente |
 
 ---
@@ -166,6 +181,9 @@ Todos os dados ficam em `src/data/mockFarm.ts` e são carregados automaticamente
 
 **Mapa SVG estilizado, não Google Maps.**
 O protótipo exige funcionamento offline-first. Integrar Google Maps criaria dependência de rede, custo de API e contradiz a premissa central do produto. O mapa é um SVG inline com polígonos clicáveis representando as divisões da propriedade no viewBox 1000×700.
+
+**Pan/zoom via Pointer Events + wheel não-passivo.**
+Um único hook `useMapPanZoom` unifica mouse e touch (incluindo pinch). O listener de `wheel` é registrado via `useEffect` com `{ passive: false }` — necessário para chamar `preventDefault()` e impedir o scroll da página durante o zoom no mapa.
 
 **Zustand com `persist` nas três stores.**
 Redux foi descartado pela verbosidade desnecessária no escopo de um protótipo. O middleware `persist` do Zustand persiste automaticamente no `localStorage` com rehydratação síncrona, permitindo que o `seed.ts` verifique o estado antes da primeira renderização sem race conditions.
@@ -186,23 +204,14 @@ A configuração proíbe `enum` e `namespace`. Todos os tipos de domínio usam s
 
 ## Próximos passos
 
-**Etapa 2: Sistema de componentes**
-- Primitivos UI: Button (primary/secondary/ghost/danger), Input com floating label, Select, Card, Badge, Modal, BottomSheet, Toast, Skeleton, EmptyState
-- Layout: AppShell com Header, Sidebar (desktop), MobileBottomNav (mobile)
-- Logo placeholder SVG (letra M com silhueta de zebu)
-- Hook `useResponsive` para alternar entre modal e bottom sheet
+**Step 3 — Telas restantes**
+- Demarcação (`/demarcation`): ferramenta SVG de desenho de polígono com cálculo de área via Shoelace
+- Cadastro de bovino (`/bovines/new`, `/bovines/:id/edit`): formulário com foto, raça, peso inicial
+- Cadastros de divisão e rebanho (`/divisions/new`, `/herds/new`)
+- Operação de lotação (`/operations/allocation`): arrastar rebanho para piquete com Framer Motion
+- Detalhe de cocho (`/feed-troughs/:id`): barra HP, histórico de abastecimentos, ação de reabastecimento
 
-**Etapa 3: Telas**
-- Login com ilustração SVG e animação de entrada
-- Dashboard com KPIs animados, mapa preview e gráfico de GMD (Recharts)
-- Mapa interativo SVG com pan/zoom, toggle de camadas e painel lateral
-- Detalhe de cocho com barra HP e histórico de abastecimentos
-- Demarcação com pins animados e cálculo de área (Shoelace)
-- Formulários de bovino, divisão e rebanho
-- Operação de lotação com arrastar e soltar (Framer Motion)
-
-**Etapa 4: Polimento**
-- Microinterações com Framer Motion (transições de rota, spring animations)
+**Step 4 — Polimento**
 - Responsividade fina em 375px, 768px, 1024px e 1440px
 - Estados loading/empty/error em todas as listas e formulários
 - Atalho `Shift+Ctrl+R` para reset do mock
