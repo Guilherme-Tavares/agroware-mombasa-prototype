@@ -159,10 +159,12 @@ export default function BovineRegister() {
   ]
 
   return (
-    <motion.div
+    <motion.form
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
+      onSubmit={(e) => { e.preventDefault(); void handleSave() }}
+      noValidate
       className="max-w-xl mx-auto"
     >
       {/* ── Header ── */}
@@ -338,7 +340,7 @@ export default function BovineRegister() {
             onBlur={() => touch('origin')}
             error={err('origin')}
           />
-          {herds.length > 0 && (
+          {herds.length > 0 ? (
             <Select
               label="Rebanho"
               value={fields.herdId}
@@ -346,6 +348,19 @@ export default function BovineRegister() {
               onChange={(e) => set('herdId', e.target.value)}
               helperText="Opcional — associa o animal a um lote existente"
             />
+          ) : (
+            <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl bg-gray-50 border border-dashed border-gray-200">
+              <p className="text-caption text-gray-500">
+                Nenhum rebanho cadastrado. O animal será criado sem lote.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate('/herds/new')}
+                className="text-caption font-medium text-primary hover:underline shrink-0"
+              >
+                Cadastrar rebanho
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -355,10 +370,10 @@ export default function BovineRegister() {
         <Button variant="secondary" onClick={() => navigate(-1)} className="shrink-0">
           Cancelar
         </Button>
-        <Button fullWidth loading={saving} onClick={handleSave}>
+        <Button type="submit" fullWidth loading={saving}>
           {isEdit ? 'Atualizar' : 'Cadastrar bovino'}
         </Button>
       </div>
-    </motion.div>
+    </motion.form>
   )
 }

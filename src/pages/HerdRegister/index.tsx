@@ -109,10 +109,12 @@ export default function HerdRegister() {
   }
 
   return (
-    <motion.div
+    <motion.form
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
+      onSubmit={(e) => { e.preventDefault(); void handleSave() }}
+      noValidate
       className="max-w-xl mx-auto"
     >
       {/* ── Header ── */}
@@ -207,10 +209,10 @@ export default function HerdRegister() {
         <Button variant="secondary" onClick={() => navigate(-1)} className="shrink-0">
           Cancelar
         </Button>
-        <Button fullWidth loading={saving} onClick={handleSave}>
+        <Button type="submit" fullWidth loading={saving}>
           Cadastrar rebanho
         </Button>
       </div>
-    </motion.div>
+    </motion.form>
   )
 }

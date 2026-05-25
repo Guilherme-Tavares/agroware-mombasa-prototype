@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, Beef, TrendingUp, AlertTriangle } from 'lucide-react'
+import { MapPin, Beef, TrendingUp, AlertTriangle, Map as MapIcon } from 'lucide-react'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useUIStore } from '@/store/useUIStore'
@@ -15,6 +16,7 @@ import {
 } from '@/components/map/MapControls.tsx'
 import DetailPanel from '@/components/map/DetailPanel.tsx'
 import BottomSheet from '@/components/ui/BottomSheet.tsx'
+import EmptyState from '@/components/ui/EmptyState.tsx'
 import {
   formatArea, formatGMD,
 } from '@/utils/format.ts'
@@ -42,6 +44,7 @@ function KPIPill({ icon, label, value, accent }: {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MapPage() {
+  const navigate        = useNavigate()
   const { isMobile }    = useResponsive()
   const farm            = useFarmStore((s) => s.farm)
   const bovines         = useFarmStore((s) => s.bovines)
@@ -72,6 +75,23 @@ export default function MapPage() {
   const showDesktopPanel = !isMobile && selected !== null
 
   function handleClosePanel() { setSelected(null) }
+
+  // ── Empty state ───────────────────────────────────────────────────────
+  // Acionado se o usuário limpar dados ou se o polígono da fazenda não
+  // tiver vértices suficientes para renderizar. Direciona à demarcação.
+  if (!farm || farm.polygon.length < 3) {
+    return (
+      <EmptyState
+        icon={<MapIcon size={28} />}
+        title="Propriedade ainda não demarcada"
+        description="Desenhe o contorno da sua fazenda para visualizar o mapa com divisões e cochos."
+        action={{
+          label: 'Demarcar agora',
+          onClick: () => navigate('/demarcation'),
+        }}
+      />
+    )
+  }
 
   return (
     <div className="flex flex-col gap-4">

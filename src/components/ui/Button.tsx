@@ -38,6 +38,7 @@ export default function Button({
   loading = false,
   icon,
   iconPosition = 'left',
+  type = 'button',
   children,
   disabled,
   className,
@@ -48,6 +49,7 @@ export default function Button({
   return (
     <button
       {...props}
+      type={type}
       disabled={isDisabled}
       className={cn(
         'inline-flex items-center justify-center rounded-input font-medium transition-all duration-150 outline-none',
