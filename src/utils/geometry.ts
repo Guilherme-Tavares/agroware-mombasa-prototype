@@ -1,6 +1,41 @@
 import type { Point } from '@/types/domain'
 
 /**
+ * Shoelace formula — returns area in the same unit² as the input coordinates.
+ */
+export function shoelaceArea(points: Point[]): number {
+  if (points.length < 3) return 0
+  let sum = 0
+  for (let i = 0; i < points.length; i++) {
+    const j = (i + 1) % points.length
+    sum += points[i].x * points[j].y
+    sum -= points[j].x * points[i].y
+  }
+  return Math.abs(sum) / 2
+}
+
+/**
+ * Perimeter — sum of edge lengths.
+ */
+export function polygonPerimeter(points: Point[]): number {
+  if (points.length < 2) return 0
+  let p = 0
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i]
+    const b = points[(i + 1) % points.length]
+    p += Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2)
+  }
+  return p
+}
+
+/**
+ * Euclidean distance between two points.
+ */
+export function distance(a: Point, b: Point): number {
+  return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2)
+}
+
+/**
  * Area-weighted centroid of a simple polygon (shoelace).
  * Falls back to the vertex average for degenerate polygons.
  */

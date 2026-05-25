@@ -2,7 +2,7 @@
 
 Protótipo navegável de alta fidelidade do **Agroware Mombasa**, sistema de gestão pecuária focado em recria e engorda de bovinos machos em regime semi-intensivo. Construído em React + TypeScript.
 
-> **Status:** Step 3 em andamento — Login, Dashboard, Mapa Interativo e Detalhe de Cocho (HP) concluídos.
+> **Status:** Step 3 em andamento — Login, Dashboard, Mapa Interativo, Detalhe de Cocho (HP) e Demarcação concluídos.
 
 ---
 
@@ -30,7 +30,7 @@ O Agroware Mombasa é um PWA mobile-first que substitui controles manuais por um
 | 1 | Login / Onboarding | `/login` | ✅ |
 | 2 | Dashboard | `/` | ✅ |
 | 3 | Mapa Interativo + painel lateral | `/map` | ✅ |
-| 4 | Demarcação de propriedade | `/demarcation` | ⏳ |
+| 4 | Demarcação de propriedade | `/demarcation` | ✅ |
 | 5 | Cadastro de bovino | `/bovines/new` | ⏳ |
 | 6 | Cadastro de divisão | `/divisions/new` | ⏳ |
 | 7 | Cadastro de rebanho | `/herds/new` | ⏳ |
@@ -116,6 +116,7 @@ src/
 │   ├── Dashboard/              # KPIs animados, mapa preview, alertas, gráfico GMD
 │   ├── Map/                    # Mapa interativo completo + controles flutuantes
 │   ├── FeedTroughDetail/       # Sistema HP: barra animada, gráfico de evolução, modal de abastecimento
+│   ├── Demarcation/            # Ferramenta SVG de desenho: pins, marching ants, Shoelace, modal
 │   └── ...                     # Demais telas (placeholders)
 ├── store/
 │   ├── useFarmStore.ts         # Propriedade, divisões, rebanhos, bovinos, cochos
@@ -126,7 +127,7 @@ src/
 ├── types/
 │   └── domain.ts               # Interfaces de domínio
 ├── utils/
-│   ├── geometry.ts             # polygonCentroid, polygonToPoints (Shoelace)
+│   ├── geometry.ts             # shoelaceArea, polygonPerimeter, distance, polygonCentroid, polygonToPoints
 │   ├── gmd.ts                  # Ganho Médio Diário
 │   ├── stocking-rate.ts        # Taxa de lotação (UA/ha)
 │   ├── hp-system.ts            # Sistema HP de cochos
@@ -173,7 +174,7 @@ Todos os dados ficam em `src/data/mockFarm.ts` e são carregados automaticamente
 |---|---|---|
 | **1. Fundações** | Configs, tipos, mock data, utils, stores, seed, rotas placeholder | ✅ Concluída |
 | **2. Sistema de componentes** | Button, Input, Card, Badge, Modal, AppShell, Sidebar, Nav, AnimatedOutlet | ✅ Concluída |
-| **3. Telas** | Login ✅ · Dashboard ✅ · Mapa ✅ · HP ✅ · Demarcação ⏳ · Cadastros ⏳ · Lotação ⏳ | 🔄 Em andamento |
+| **3. Telas** | Login ✅ · Dashboard ✅ · Mapa ✅ · HP ✅ · Demarcação ✅ · Cadastros ⏳ · Lotação ⏳ | 🔄 Em andamento |
 | **4. Polimento** | Animações, responsividade, estados (loading/empty/error), PWA final | ⏳ Pendente |
 
 ---
@@ -206,7 +207,6 @@ A configuração proíbe `enum` e `namespace`. Todos os tipos de domínio usam s
 ## Próximos passos
 
 **Step 3 — Telas restantes**
-- Demarcação (`/demarcation`): ferramenta SVG de desenho de polígono com cálculo de área via Shoelace
 - Cadastro de bovino (`/bovines/new`, `/bovines/:id/edit`): formulário com foto, raça, peso inicial
 - Cadastros de divisão e rebanho (`/divisions/new`, `/herds/new`)
 - Operação de lotação (`/operations/allocation`): arrastar rebanho para piquete com Framer Motion

@@ -30,6 +30,7 @@ interface FarmState {
   seasonPassages: SeasonPassage[]
 
   seedFromMock: (data: MockData) => void
+  updateFarm: (updates: Partial<Farm>) => void
   addBovine: (bovine: Bovine) => void
   updateBovine: (id: string, updates: Partial<Bovine>) => void
   allocateHerd: (allocation: Allocation) => void
@@ -54,6 +55,11 @@ export const useFarmStore = create<FarmState>()(
       feeds: [],
       seasons: [],
       seasonPassages: [],
+
+      updateFarm: (updates) =>
+        set((state) => ({
+          farm: state.farm ? { ...state.farm, ...updates } : state.farm,
+        })),
 
       seedFromMock: (data) =>
         set({
