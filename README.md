@@ -2,7 +2,7 @@
 
 Protótipo navegável de alta fidelidade do **Agroware Mombasa**, sistema de gestão pecuária focado em recria e engorda de bovinos machos em regime semi-intensivo. Construído em React + TypeScript.
 
-> **Status:** Step 3 em andamento — Login, Dashboard, Mapa Interativo, Detalhe de Cocho (HP), Demarcação e Cadastros concluídos.
+> **Status:** Step 3 concluído — todas as telas implementadas.
 
 ---
 
@@ -34,7 +34,7 @@ O Agroware Mombasa é um PWA mobile-first que substitui controles manuais por um
 | 5 | Cadastro de bovino | `/bovines/new` | ✅ |
 | 6 | Cadastro de divisão | `/divisions/new` | ✅ |
 | 7 | Cadastro de rebanho | `/herds/new` | ✅ |
-| 8 | Operação de lotação | `/operations/allocation` | ⏳ |
+| 8 | Operação de lotação | `/operations/allocation` | ✅ |
 | 9 | Detalhe de cocho (Sistema HP) | `/feed-troughs/:id` | ✅ |
 
 ---
@@ -120,7 +120,7 @@ src/
 │   ├── BovineRegister/         # Cadastro/edição de bovino: foto, validação inline, edit mode
 │   ├── DivisionRegister/       # Cadastro de divisão: área, tipo, forrageira condicional
 │   ├── HerdRegister/           # Cadastro de rebanho: finalidade, data, observações
-│   └── ...                     # Demais telas (placeholders)
+│   └── HerdAllocation/         # Lotação: drag-and-drop, modal UA/ha, flash de confirmação
 ├── store/
 │   ├── useFarmStore.ts         # Propriedade, divisões, rebanhos, bovinos, cochos
 │   ├── useAuthStore.ts         # Sessão local
@@ -177,7 +177,7 @@ Todos os dados ficam em `src/data/mockFarm.ts` e são carregados automaticamente
 |---|---|---|
 | **1. Fundações** | Configs, tipos, mock data, utils, stores, seed, rotas placeholder | ✅ Concluída |
 | **2. Sistema de componentes** | Button, Input, Card, Badge, Modal, AppShell, Sidebar, Nav, AnimatedOutlet | ✅ Concluída |
-| **3. Telas** | Login ✅ · Dashboard ✅ · Mapa ✅ · HP ✅ · Demarcação ✅ · Cadastros ✅ · Lotação ⏳ | 🔄 Em andamento |
+| **3. Telas** | Login ✅ · Dashboard ✅ · Mapa ✅ · HP ✅ · Demarcação ✅ · Cadastros ✅ · Lotação ✅ | ✅ Concluída |
 | **4. Polimento** | Animações, responsividade, estados (loading/empty/error), PWA final | ⏳ Pendente |
 
 ---
@@ -208,9 +208,6 @@ A configuração proíbe `enum` e `namespace`. Todos os tipos de domínio usam s
 ---
 
 ## Próximos passos
-
-**Step 3 — Telas restantes**
-- Operação de lotação (`/operations/allocation`): arrastar rebanho para piquete com Framer Motion
 
 **Step 4 — Polimento**
 - Responsividade fina em 375px, 768px, 1024px e 1440px
