@@ -38,6 +38,32 @@ import type {
 } from '@/types/domain'
 import type { MockData } from '@/data/mockFarm'
 
+// ── Helpers de débito de estoque (Slice 2) ──
+// Estoque é único por (propriedade, insumo). O débito subtrai do saldo, sem
+// negativar. Para medicamento, só debita quando a unidade do estoque coincide
+// com a unidade da dose (evita subtrair grandezas incompatíveis). Para alimento,
+// o abastecimento é em kg, então só debita estoques em kg.
+
+function debitMedicationStock(
+  stocks: MedicationStock[], medicationId: string, propertyId: string, amount: number, unit: string,
+): MedicationStock[] {
+  return stocks.map((s) =>
+    s.medicationId === medicationId && s.propertyId === propertyId && s.unit === unit
+      ? { ...s, quantity: Math.max(0, s.quantity - amount) }
+      : s,
+  )
+}
+
+function debitFeedStock(
+  stocks: FeedStock[], feedId: string, propertyId: string, amountKg: number,
+): FeedStock[] {
+  return stocks.map((s) =>
+    s.feedId === feedId && s.propertyId === propertyId && s.unit === 'kg'
+      ? { ...s, quantity: Math.max(0, s.quantity - amountKg) }
+      : s,
+  )
+}
+
 interface FarmState {
   // Conta e acesso
   user: User | null
@@ -128,6 +154,17 @@ interface FarmState {
   addExpenseCategory: (category: ExpenseCategory) => void
   addSanitaryEvent: (event: SanitaryEvent) => void
   addTask: (task: Task) => void
+  // Operações (RF24–RF33) — Slice 1: estoques, pesagem, GMD
+  addMedicationStock: (entry: MedicationStock) => void
+  addFeedStock: (entry: FeedStock) => void
+  addWeighing: (weighing: Weighing) => void
+  addSeasonPassage: (passage: SeasonPassage) => void
+  // Operações — Slice 2: consumo e débito de estoque
+  applyMedication: (application: MedicationApplication) => void
+  executeSanitaryEvent: (eventId: string, application?: MedicationApplication) => void
+  // Operações — Slice 3: movimentação de animais
+  setBovineMembership: (bovineId: string, herdId: string | null, opts: { startDate: string; entryWeightKg?: number }) => void
+  transferBovine: (transfer: BovineTransfer) => void
 }
 
 const emptyState = {
@@ -379,20 +416,70 @@ export const useFarmStore = create<FarmState>()(
           ),
         })),
 
+      // Abastecimento (RF30): atualiza o cocho (alimentando o Sistema HP via
+      // currentAmount/consumptionRate) e debita do estoque de alimento o delta
+      // efetivamente adicionado (novo total − saldo anterior). `refill.amount`
+      // permanece o total do abastecimento, usado pelo gráfico de evolução HP.
       refillFeedTrough: (troughId, refill, newAmount) =>
-        set((state) => ({
-          feedTroughs: state.feedTroughs.map((t) =>
-            t.id === troughId
-              ? {
-                  ...t,
-                  currentAmount: newAmount,
-                  lastRefillDate: refill.date,
-                  currentFeedId: refill.feedId,
-                  refillHistory: [refill, ...t.refillHistory].slice(0, 10),
-                }
-              : t,
-          ),
-        })),
+        set((state) => {
+          const trough = state.feedTroughs.find((t) => t.id === troughId)
+          const previous = trough?.currentAmount ?? 0
+          const delta = Math.max(0, newAmount - previous)
+          return {
+            feedTroughs: state.feedTroughs.map((t) =>
+              t.id === troughId
+                ? {
+                    ...t,
+                    currentAmount: newAmount,
+                    lastRefillDate: refill.date,
+                    currentFeedId: refill.feedId,
+                    consumptionRate: refill.consumptionRate ?? t.consumptionRate,
+                    refillHistory: [refill, ...t.refillHistory].slice(0, 10),
+                  }
+                : t,
+            ),
+            feedStocks: state.activePropertyId && delta > 0
+              ? debitFeedStock(state.feedStocks, refill.feedId, state.activePropertyId, delta)
+              : state.feedStocks,
+          }
+        }),
+
+      // Aplicação de medicamento (RF29): registra e debita o estoque.
+      applyMedication: (application) =>
+        set((state) => {
+          const med = state.medications.find((m) => m.id === application.medicationId)
+          return {
+            medicationApplications: [...state.medicationApplications, application],
+            medicationStocks: med?.propertyId
+              ? debitMedicationStock(state.medicationStocks, application.medicationId, med.propertyId, application.dose, application.doseUnit)
+              : state.medicationStocks,
+          }
+        }),
+
+      // Execução de evento sanitário (RF32): marca executado e, quando há
+      // medicamento e bovino alvo, gera a aplicação (debitando o estoque).
+      executeSanitaryEvent: (eventId, application) =>
+        set((state) => {
+          const today = new Date().toISOString().split('T')[0]
+          let medicationApplications = state.medicationApplications
+          let medicationStocks = state.medicationStocks
+          if (application) {
+            medicationApplications = [...medicationApplications, application]
+            const med = state.medications.find((m) => m.id === application.medicationId)
+            if (med?.propertyId) {
+              medicationStocks = debitMedicationStock(medicationStocks, application.medicationId, med.propertyId, application.dose, application.doseUnit)
+            }
+          }
+          return {
+            medicationApplications,
+            medicationStocks,
+            sanitaryEvents: state.sanitaryEvents.map((e) =>
+              e.id === eventId
+                ? { ...e, status: 'executado' as const, executionDate: today, applicationId: application?.id ?? e.applicationId }
+                : e,
+            ),
+          }
+        }),
 
       updateDivision: (id, updates) =>
         set((state) => ({
@@ -470,6 +557,116 @@ export const useFarmStore = create<FarmState>()(
 
       addTask: (task) =>
         set((state) => ({ tasks: [...state.tasks, task] })),
+
+      // ── Operações (Slice 1) ──
+
+      // Estoque é único por (propriedade, medicamento): entrada soma à quantidade.
+      addMedicationStock: (entry) =>
+        set((state) => {
+          const existing = state.medicationStocks.find(
+            (s) => s.propertyId === entry.propertyId && s.medicationId === entry.medicationId,
+          )
+          if (existing) {
+            return {
+              medicationStocks: state.medicationStocks.map((s) =>
+                s.id === existing.id
+                  ? { ...s, quantity: s.quantity + entry.quantity, unit: entry.unit, minimumStock: entry.minimumStock, entryDate: entry.entryDate, updatedAt: entry.updatedAt }
+                  : s,
+              ),
+            }
+          }
+          return { medicationStocks: [...state.medicationStocks, entry] }
+        }),
+
+      // Estoque é único por (propriedade, alimento): entrada soma à quantidade.
+      addFeedStock: (entry) =>
+        set((state) => {
+          const existing = state.feedStocks.find(
+            (s) => s.propertyId === entry.propertyId && s.feedId === entry.feedId,
+          )
+          if (existing) {
+            return {
+              feedStocks: state.feedStocks.map((s) =>
+                s.id === existing.id
+                  ? { ...s, quantity: s.quantity + entry.quantity, unit: entry.unit, minimumStock: entry.minimumStock, entryDate: entry.entryDate, updatedAt: entry.updatedAt }
+                  : s,
+              ),
+            }
+          }
+          return { feedStocks: [...state.feedStocks, entry] }
+        }),
+
+      // Pesagem: registra o histórico e atualiza o cache de peso do bovino
+      // quando a pesagem é a mais recente (escopo §8.13).
+      addWeighing: (weighing) =>
+        set((state) => ({
+          weighings: [...state.weighings, weighing],
+          bovines: state.bovines.map((b) =>
+            b.id === weighing.bovineId && (!b.lastWeighDate || weighing.date >= b.lastWeighDate)
+              ? { ...b, currentWeight: weighing.weightKg, lastWeighDate: weighing.date, updatedAt: weighing.createdAt ?? b.updatedAt }
+              : b,
+          ),
+        })),
+
+      // Passagem por temporada: fonte primária do GMD (nível de lote).
+      addSeasonPassage: (passage) =>
+        set((state) => ({ seasonPassages: [...state.seasonPassages, passage] })),
+
+      // ── Operações (Slice 3) ──
+
+      // Pertencimento (RF27): encerra o vínculo ativo do bovino e abre um novo
+      // no rebanho destino (ou apenas o retira, quando herdId é null).
+      // Mantém `bovino.herdId` como cache do rebanho atual.
+      setBovineMembership: (bovineId, herdId, opts) =>
+        set((state) => {
+          const now = new Date().toISOString()
+          const closed = state.memberships.map((m) =>
+            m.bovineId === bovineId && !m.endDate && m.active !== false
+              ? { ...m, endDate: opts.startDate, updatedAt: now }
+              : m,
+          )
+          const memberships = herdId
+            ? [
+                ...closed,
+                {
+                  id: crypto.randomUUID(),
+                  bovineId,
+                  herdId,
+                  startDate: opts.startDate,
+                  entryWeightKg: opts.entryWeightKg,
+                  active: true,
+                  createdAt: now,
+                  updatedAt: now,
+                },
+              ]
+            : closed
+          return {
+            memberships,
+            bovines: state.bovines.map((b) =>
+              b.id === bovineId ? { ...b, herdId: herdId ?? undefined, updatedAt: now } : b,
+            ),
+          }
+        }),
+
+      // Transferência de bovino entre propriedades (RF33): registra o histórico,
+      // muda a propriedade do bovino e encerra o pertencimento ativo na origem.
+      transferBovine: (transfer) =>
+        set((state) => {
+          const now = new Date().toISOString()
+          return {
+            bovineTransfers: [...state.bovineTransfers, transfer],
+            bovines: state.bovines.map((b) =>
+              b.id === transfer.bovineId
+                ? { ...b, propertyId: transfer.destinationPropertyId, herdId: undefined, updatedAt: now }
+                : b,
+            ),
+            memberships: state.memberships.map((m) =>
+              m.bovineId === transfer.bovineId && !m.endDate && m.active !== false
+                ? { ...m, endDate: transfer.date, updatedAt: now }
+                : m,
+            ),
+          }
+        }),
     }),
     {
       name: 'agroware:farm',

@@ -15,6 +15,14 @@ import {
   ListTodo,
   DollarSign,
   ArrowLeftRight,
+  Scale,
+  TrendingUp,
+  PackagePlus,
+  Syringe,
+  Droplets as DropletsOp,
+  ClipboardCheck,
+  Link2,
+  Truck,
   BarChart2,
   Settings,
   HelpCircle,
@@ -60,6 +68,8 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
     items: [
       { to: '/medications/new', label: 'Medicamentos', icon: <Pill size={18} /> },
       { to: '/feeds/new', label: 'Alimentos', icon: <Wheat size={18} /> },
+      { to: '/medication-stock/new', label: 'Estoque medicamento', icon: <PackagePlus size={18} /> },
+      { to: '/feed-stock/new', label: 'Estoque alimento', icon: <PackagePlus size={18} /> },
     ],
   },
   {
@@ -79,6 +89,13 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
     title: 'Operações',
     items: [
       { to: '/operations/allocation', label: 'Lotação', icon: <ArrowLeftRight size={18} /> },
+      { to: '/operations/weighing', label: 'Pesagem', icon: <Scale size={18} /> },
+      { to: '/operations/season-passage', label: 'Passagem (GMD)', icon: <TrendingUp size={18} /> },
+      { to: '/operations/medication-application', label: 'Aplicação', icon: <Syringe size={18} /> },
+      { to: '/operations/supply', label: 'Abastecimento', icon: <DropletsOp size={18} /> },
+      { to: '/operations/sanitary-execution', label: 'Executar eventos', icon: <ClipboardCheck size={18} /> },
+      { to: '/operations/membership', label: 'Pertencimento', icon: <Link2 size={18} /> },
+      { to: '/operations/bovine-transfer', label: 'Transferência', icon: <Truck size={18} /> },
     ],
   },
   {

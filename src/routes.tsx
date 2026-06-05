@@ -16,6 +16,15 @@ import SanitaryEventRegister from '@/pages/SanitaryEventRegister/index.tsx'
 import TaskRegister from '@/pages/TaskRegister/index.tsx'
 import PropertyRegister from '@/pages/PropertyRegister/index.tsx'
 import ForageRegister from '@/pages/ForageRegister/index.tsx'
+import MedicationStockRegister from '@/pages/MedicationStockRegister/index.tsx'
+import FeedStockRegister from '@/pages/FeedStockRegister/index.tsx'
+import WeighingRegister from '@/pages/WeighingRegister/index.tsx'
+import SeasonPassageRegister from '@/pages/SeasonPassageRegister/index.tsx'
+import MedicationApplicationRegister from '@/pages/MedicationApplicationRegister/index.tsx'
+import SupplyRegister from '@/pages/SupplyRegister/index.tsx'
+import SanitaryEventExecution from '@/pages/SanitaryEventExecution/index.tsx'
+import MembershipRegister from '@/pages/MembershipRegister/index.tsx'
+import BovineTransferRegister from '@/pages/BovineTransferRegister/index.tsx'
 import HerdAllocation from '@/pages/HerdAllocation/index.tsx'
 import MapBaseConfig from '@/pages/MapBaseConfig/index.tsx'
 import Profile from '@/pages/Profile/index.tsx'
@@ -59,6 +68,15 @@ export const router = createBrowserRouter([
           { path: 'sanitary-events/new', element: <SanitaryEventRegister /> },
           { path: 'tasks/new', element: <TaskRegister /> },
           { path: 'operations/allocation', element: <HerdAllocation /> },
+          { path: 'operations/weighing', element: <WeighingRegister /> },
+          { path: 'operations/season-passage', element: <SeasonPassageRegister /> },
+          { path: 'operations/medication-application', element: <MedicationApplicationRegister /> },
+          { path: 'operations/supply', element: <SupplyRegister /> },
+          { path: 'operations/sanitary-execution', element: <SanitaryEventExecution /> },
+          { path: 'operations/membership', element: <MembershipRegister /> },
+          { path: 'operations/bovine-transfer', element: <BovineTransferRegister /> },
+          { path: 'medication-stock/new', element: <MedicationStockRegister /> },
+          { path: 'feed-stock/new', element: <FeedStockRegister /> },
           { path: 'profile', element: <Profile /> },
           { path: 'settings', element: <Settings /> },
           { path: 'access', element: <Access /> },

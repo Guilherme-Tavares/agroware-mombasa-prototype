@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ArrowRight, AlertTriangle, GripVertical, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useFarmStore } from '@/store/useFarmStore'
+import { useAccess } from '@/hooks/useAccess'
 import { useToast } from '@/hooks/useToast'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
@@ -56,6 +57,8 @@ function StatRow({ label, value }: { label: string; value: string }) {
 export default function HerdAllocation() {
   const navigate = useNavigate()
   const toast    = useToast()
+  const { can }  = useAccess()
+  const canWrite = can.writeHusbandry
 
   // ── Store ────────────────────────────────────────────────────────────────
 
@@ -119,12 +122,16 @@ export default function HerdAllocation() {
     setConfirming(true)
     await new Promise((r) => setTimeout(r, 700))
 
+    const now = new Date().toISOString()
     allocateHerd({
       id:         crypto.randomUUID(),
       herdId:     pending.herdId,
       divisionId: pending.divisionId,
       startDate:  today,
+      headCount:  herdStats(pending.herdId).headCount,
       active:     true,
+      createdAt:  now,
+      updatedAt:  now,
     })
 
     const divName = divisions.find((d) => d.id === pending.divisionId)?.name ?? ''
@@ -172,10 +179,17 @@ export default function HerdAllocation() {
         <div>
           <h1 className="text-title font-bold text-gray-900">Operação de Lotação</h1>
           <p className="text-caption text-gray-400">
-            Arraste um rebanho sobre uma divisão para alocar
+            {canWrite ? 'Arraste um rebanho sobre uma divisão para alocar' : 'Visualização (somente leitura)'}
           </p>
         </div>
       </div>
+
+      {!canWrite && (
+        <div className="mb-4 flex items-start gap-2 px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 text-caption text-gray-500">
+          <AlertTriangle size={14} className="mt-0.5 shrink-0 text-gray-400" />
+          <span>Seu nível de acesso permite apenas consultar a lotação.</span>
+        </div>
+      )}
 
       {/* ── Board ── */}
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 items-start">
@@ -194,7 +208,7 @@ export default function HerdAllocation() {
               return (
                 <motion.div
                   key={herd.id}
-                  drag
+                  drag={canWrite}
                   dragMomentum={false}
                   dragElastic={0.06}
                   dragSnapToOrigin
@@ -223,7 +237,7 @@ export default function HerdAllocation() {
                   className={cn(
                     'bg-white rounded-xl border border-gray-100 p-4 select-none',
                     'hover:border-gray-200 hover:shadow-sm transition-shadow',
-                    isDragging ? 'cursor-grabbing' : 'cursor-grab',
+                    !canWrite ? 'cursor-default' : isDragging ? 'cursor-grabbing' : 'cursor-grab',
                   )}
                 >
                   <div className="flex items-start gap-2.5">
@@ -327,6 +341,7 @@ export default function HerdAllocation() {
                         <span className="text-caption font-medium text-gray-700 leading-tight">
                           {allocHerd.name}
                         </span>
+                        {canWrite && (
                         <button
                           onClick={() => deallocateHerd(allocHerd.id)}
                           className="text-gray-300 hover:text-alert transition-colors shrink-0 mt-0.5"
@@ -334,6 +349,7 @@ export default function HerdAllocation() {
                         >
                           <X size={13} />
                         </button>
+                        )}
                       </div>
                       <Badge variant={status} size="sm">
                         {formatStockingRate(rate)}
