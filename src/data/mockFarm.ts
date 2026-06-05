@@ -1,4 +1,6 @@
 import type {
+  Point,
+  GeoPoint,
   User,
   UserConfig,
   UserProperty,
@@ -211,6 +213,43 @@ const farm2: Farm = {
 
 const farms: Farm[] = [farm, farm2]
 
+// ─── Projeção relativa → geográfica ────────────────────────────────────────
+// As geometrias de divisões e cochos são autoradas em coordenadas relativas
+// (viewBox ilustrado). Para o mapa real (Leaflet), derivamos lat/lng mapeando
+// linearmente o bounding box relativo da fazenda no bounding box geográfico
+// dela. Assim o mock carrega coordenadas reais coerentes, sem autoria manual
+// ponto a ponto. Eixo Y do viewBox cresce para baixo; latitude cresce para o
+// norte, por isso a inversão no cálculo de `lat`.
+
+function bboxOf<T>(items: T[], gx: (t: T) => number, gy: (t: T) => number) {
+  const xs = items.map(gx)
+  const ys = items.map(gy)
+  return {
+    xMin: Math.min(...xs), xMax: Math.max(...xs),
+    yMin: Math.min(...ys), yMax: Math.max(...ys),
+  }
+}
+
+const REL_BBOX = bboxOf(farm.polygon, (p) => p.x, (p) => p.y)
+const GEO_BBOX = (() => {
+  const geo = farm.geoPolygon ?? []
+  return {
+    lngMin: Math.min(...geo.map((g) => g.lng)),
+    lngMax: Math.max(...geo.map((g) => g.lng)),
+    latMin: Math.min(...geo.map((g) => g.lat)),
+    latMax: Math.max(...geo.map((g) => g.lat)),
+  }
+})()
+
+function relativeToGeo(p: Point): GeoPoint {
+  const fx = (p.x - REL_BBOX.xMin) / (REL_BBOX.xMax - REL_BBOX.xMin)
+  const fy = (p.y - REL_BBOX.yMin) / (REL_BBOX.yMax - REL_BBOX.yMin)
+  return {
+    lng: GEO_BBOX.lngMin + fx * (GEO_BBOX.lngMax - GEO_BBOX.lngMin),
+    lat: GEO_BBOX.latMax - fy * (GEO_BBOX.latMax - GEO_BBOX.latMin),
+  }
+}
+
 // ─── Forragens (catálogo de espécies) ────────────────────────────────────────
 
 const forages: Forage[] = [
@@ -268,6 +307,11 @@ const divisions: Division[] = [
     ...audit,
   },
 ]
+
+// Deriva o polígono geográfico de cada divisão a partir do relativo.
+divisions.forEach((d) => {
+  d.geoPolygon = d.polygon.map(relativeToGeo)
+})
 
 // forragem (DDL): plantio derivado das divisões com forrageira ativa.
 const foragePlantings: ForagePlanting[] = divisions
@@ -486,6 +530,11 @@ const feedTroughs: FeedTrough[] = [
     ...audit,
   },
 ]
+
+// Deriva a posição geográfica de cada cocho a partir da relativa.
+feedTroughs.forEach((t) => {
+  t.geoPosition = relativeToGeo(t.position)
+})
 
 // ─── Lotação ────────────────────────────────────────────────────────────────
 

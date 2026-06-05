@@ -2,10 +2,13 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, Minus, Maximize2, Layers,
-  Satellite, Map as MapIcon, Beef, Droplets, Wheat,
+  Satellite, Map as MapIcon, Palette, Beef, Droplets, Wheat,
   Grid3x3,
 } from 'lucide-react'
 import type { MapLayers } from './StylizedFarmMap.tsx'
+
+/** Camada base do mapa: ilustrada (SVG), satélite (Esri) ou ruas (OSM). */
+export type MapBaseLayer = 'ilustrada' | 'satelite' | 'mapa'
 
 // ─── Zoom controls (top-right) ────────────────────────────────────────────────
 
@@ -131,36 +134,36 @@ export function LayerTogglePanel({ layers, onToggle }: LayerTogglePanelProps) {
   )
 }
 
-// ─── Style toggle (bottom-right) ──────────────────────────────────────────────
+// ─── Base layer toggle (bottom-right) ─────────────────────────────────────────
 
 interface MapStyleToggleProps {
-  satelliteMode:   boolean
-  onChange: (next: boolean) => void
+  base:     MapBaseLayer
+  onChange: (next: MapBaseLayer) => void
 }
 
-export function MapStyleToggle({ satelliteMode, onChange }: MapStyleToggleProps) {
+const BASE_ITEMS: Array<{ key: MapBaseLayer; label: string; icon: React.ReactNode }> = [
+  { key: 'ilustrada', label: 'Ilustrada', icon: <Palette   size={14} /> },
+  { key: 'satelite',  label: 'Satélite',  icon: <Satellite size={14} /> },
+  { key: 'mapa',      label: 'Mapa',      icon: <MapIcon   size={14} /> },
+]
+
+export function MapStyleToggle({ base, onChange }: MapStyleToggleProps) {
   return (
     <div className="flex rounded-xl bg-white shadow-floating border border-gray-200 overflow-hidden">
-      <button
-        onClick={() => onChange(true)}
-        className={[
-          'flex items-center gap-1.5 px-3 py-2 text-button transition-colors',
-          satelliteMode ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-50',
-        ].join(' ')}
-      >
-        <Satellite size={14} />
-        <span className="hidden sm:inline">Satélite</span>
-      </button>
-      <button
-        onClick={() => onChange(false)}
-        className={[
-          'flex items-center gap-1.5 px-3 py-2 text-button transition-colors',
-          !satelliteMode ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-50',
-        ].join(' ')}
-      >
-        <MapIcon size={14} />
-        <span className="hidden sm:inline">Mapa</span>
-      </button>
+      {BASE_ITEMS.map(({ key, label, icon }) => (
+        <button
+          key={key}
+          onClick={() => onChange(key)}
+          aria-pressed={base === key}
+          className={[
+            'flex items-center gap-1.5 px-3 py-2 text-button transition-colors',
+            base === key ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-50',
+          ].join(' ')}
+        >
+          {icon}
+          <span className="hidden sm:inline">{label}</span>
+        </button>
+      ))}
     </div>
   )
 }

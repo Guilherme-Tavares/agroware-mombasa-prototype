@@ -11,8 +11,9 @@ import { useMapPanZoom } from '@/hooks/useMapPanZoom'
 import StylizedFarmMap, {
   type SelectedElement, type MapLayers,
 } from '@/components/map/StylizedFarmMap.tsx'
+import RealFarmMap from '@/components/map/RealFarmMap.tsx'
 import {
-  ZoomControls, LayerTogglePanel, MapStyleToggle,
+  ZoomControls, LayerTogglePanel, MapStyleToggle, type MapBaseLayer,
 } from '@/components/map/MapControls.tsx'
 import DetailPanel from '@/components/map/DetailPanel.tsx'
 import BottomSheet from '@/components/ui/BottomSheet.tsx'
@@ -57,8 +58,9 @@ export default function MapPage() {
   // Pan/zoom api lives at the page level so we can drive ZoomControls
   const panZoomApi = useMapPanZoom({ viewBoxWidth: 1000, viewBoxHeight: 700 })
 
-  const [satelliteMode, setSatelliteMode] = useState(true)
+  const [baseLayer, setBaseLayer] = useState<MapBaseLayer>('ilustrada')
   const [selected, setSelected] = useState<SelectedElement>(null)
+  const isIllustrated = baseLayer === 'ilustrada'
 
   // KPIs
   const totalHead = bovines.length
@@ -135,34 +137,47 @@ export default function MapPage() {
           h-[calc(100svh-230px)] min-h-[480px] lg:min-h-[560px]
         "
       >
-        {/* SVG map (page-owned pan/zoom passed in) */}
-        <StylizedFarmMap
-          selected={selected}
-          onSelect={setSelected}
-          layers={layers}
-          satelliteMode={satelliteMode}
-          panZoomApi={panZoomApi}
-          className="absolute inset-0 w-full h-full"
-        />
-
-        {/* Floating controls ─ top-right (zoom) */}
-        <div className="absolute top-3 right-3 z-10">
-          <ZoomControls
-            zoom={panZoomApi.zoom}
-            onZoomIn={panZoomApi.zoomIn}
-            onZoomOut={panZoomApi.zoomOut}
-            onReset={panZoomApi.reset}
+        {/* Camada base: SVG ilustrado ou mapa real (Leaflet) */}
+        {isIllustrated ? (
+          <StylizedFarmMap
+            selected={selected}
+            onSelect={setSelected}
+            layers={layers}
+            satelliteMode={false}
+            panZoomApi={panZoomApi}
+            className="absolute inset-0 w-full h-full"
           />
-        </div>
+        ) : (
+          <RealFarmMap
+            selected={selected}
+            onSelect={setSelected}
+            layers={layers}
+            baseLayer={baseLayer === 'satelite' ? 'satelite' : 'mapa'}
+            className="absolute inset-0 w-full h-full"
+          />
+        )}
+
+        {/* Floating controls ─ top-right (zoom) — só no modo ilustrado;
+            o mapa real usa o controle de zoom nativo do Leaflet */}
+        {isIllustrated && (
+          <div className="absolute top-3 right-3 z-10">
+            <ZoomControls
+              zoom={panZoomApi.zoom}
+              onZoomIn={panZoomApi.zoomIn}
+              onZoomOut={panZoomApi.zoomOut}
+              onReset={panZoomApi.reset}
+            />
+          </div>
+        )}
 
         {/* Floating controls ─ bottom-left (layers) */}
         <div className="absolute bottom-3 left-3 z-10">
           <LayerTogglePanel layers={layers} onToggle={toggleMapLayer} />
         </div>
 
-        {/* Floating controls ─ bottom-right (style) */}
+        {/* Floating controls ─ bottom-right (camada base) */}
         <div className="absolute bottom-3 right-3 z-10">
-          <MapStyleToggle satelliteMode={satelliteMode} onChange={setSatelliteMode} />
+          <MapStyleToggle base={baseLayer} onChange={setBaseLayer} />
         </div>
 
         {/* Desktop side panel (overlays the right side of the map) */}
@@ -181,8 +196,8 @@ export default function MapPage() {
           )}
         </AnimatePresence>
 
-        {/* Hint text on first load (no element selected) */}
-        {!selected && (
+        {/* Hint text on first load (no element selected) — modo ilustrado */}
+        {!selected && isIllustrated && (
           <div className="absolute top-3 left-3 z-10 hidden lg:block pointer-events-none">
             <p className="text-caption text-gray-500 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-gray-100">
               Arraste para mover · scroll para zoom · clique em um elemento
