@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 import AppShell, { ProtectedRoute } from '@/components/layout/AppShell.tsx'
 import RouteFallback from '@/components/layout/RouteFallback.tsx'
+import RouteError from '@/components/RouteError.tsx'
 import Login from '@/pages/Login/index.tsx'
 
 // Telas carregadas sob demanda (code-splitting por rota) vêm de `@/lazyPages`.
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: <Login />,
+    errorElement: <RouteError />,
   },
   // Rota de desenvolvimento — fora do AppShell e sem proteção de auth.
   // Suspense próprio porque não passa pelo AnimatedOutlet.
@@ -41,6 +43,7 @@ export const router = createBrowserRouter([
         <DevComponents />
       </Suspense>
     ),
+    errorElement: <RouteError />,
   },
   {
     element: <ProtectedRoute />,
@@ -48,6 +51,7 @@ export const router = createBrowserRouter([
       {
         path: '/',
         element: <AppShell />,
+        errorElement: <RouteError />,
         children: [
           { index: true, element: <Dashboard /> },
           { path: 'map', element: <MapPage /> },
