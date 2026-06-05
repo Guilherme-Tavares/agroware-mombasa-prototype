@@ -38,6 +38,7 @@ import PropertyRegister from '@/pages/PropertyRegister/index.tsx'
 import PropertyList from '@/pages/PropertyList/index.tsx'
 import PropertyDetail from '@/pages/PropertyDetail/index.tsx'
 import UsersInvitesList from '@/pages/UsersInvitesList/index.tsx'
+import Notifications from '@/pages/Notifications/index.tsx'
 import ForageRegister from '@/pages/ForageRegister/index.tsx'
 import ForageList from '@/pages/ForageList/index.tsx'
 import ForageDetail from '@/pages/ForageDetail/index.tsx'
@@ -106,6 +107,7 @@ export const router = createBrowserRouter([
           { path: 'properties/:id', element: <PropertyDetail /> },
           { path: 'properties/:id/edit', element: <PropertyRegister /> },
           { path: 'users-invites', element: <UsersInvitesList /> },
+          { path: 'notifications', element: <Notifications /> },
           { path: 'divisions', element: <DivisionList /> },
           { path: 'divisions/new', element: <DivisionRegister /> },
           { path: 'divisions/:id', element: <DivisionDetail /> },

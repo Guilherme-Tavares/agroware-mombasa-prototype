@@ -5,6 +5,7 @@ import { useFarmStore } from '@/store/useFarmStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useUIStore } from '@/store/useUIStore'
 import { useAccess, accessLevelLabel } from '@/hooks/useAccess'
+import { useUnreadCount } from '@/hooks/useNotifications'
 import { cn } from '@/utils/cn'
 
 export default function Header() {
@@ -16,6 +17,7 @@ export default function Header() {
   const producerName = useAuthStore((s) => s.producerName)
   const toggleSidebar = useUIStore((s) => s.toggleSidebar)
   const { level } = useAccess()
+  const unread = useUnreadCount()
 
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement | null>(null)
@@ -111,11 +113,16 @@ export default function Header() {
       {/* direita */}
       <div className="flex items-center gap-2">
         <button
+          onClick={() => navigate('/notifications')}
           className="relative p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
-          aria-label="Notificações"
+          aria-label={unread > 0 ? `Notificações (${unread} não lidas)` : 'Notificações'}
         >
           <Bell size={18} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-alert" aria-hidden="true" />
+          {unread > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-alert text-white text-[10px] font-bold leading-4 text-center">
+              {unread > 9 ? '9+' : unread}
+            </span>
+          )}
         </button>
 
         <button

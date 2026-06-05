@@ -37,6 +37,9 @@ import type {
   Refill,
 } from '@/types/domain'
 import type { MockData } from '@/data/mockFarm'
+import { calculateHPPercentage } from '@/utils/hp-system'
+import { formatDate } from '@/utils/format'
+import type { NotificationSeverity } from '@/types/domain'
 
 // ── Helpers de débito de estoque (Slice 2) ──
 // Estoque é único por (propriedade, insumo). O débito subtrai do saldo, sem
@@ -62,6 +65,112 @@ function debitFeedStock(
       ? { ...s, quantity: Math.max(0, s.quantity - amountKg) }
       : s,
   )
+}
+
+// ── Derivação de notificações (RF67) ──
+// As notificações são derivadas dos dados. Cada condição vigente tem uma chave
+// estável (tipo + referência); o reconcile materializa uma `notificacao` por
+// condição sem duplicar enquanto a condição persiste, e marca como resolvida
+// aquela cuja condição deixou de valer.
+
+const WEIGH_LATE_DAYS = 45
+const EVENT_SOON_DAYS = 14
+
+interface DerivedCondition {
+  type: string
+  referenceType: string
+  referenceId: string
+  title: string
+  message: string
+  severity: NotificationSeverity
+  /** Propriedade alvo (convites apontam para a propriedade convidada). */
+  propertyId: string
+}
+
+function daysFromToday(dateStr: string): number {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000)
+}
+function daysUntil(dateStr: string): number {
+  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86_400_000)
+}
+
+function deriveConditions(state: FarmState): DerivedCondition[] {
+  const propertyId = state.activePropertyId
+  const out: DerivedCondition[] = []
+  if (!propertyId) return out
+
+  const divIds = new Set(state.divisions.filter((d) => d.farmId === propertyId).map((d) => d.id))
+
+  // Cocho crítico (HP ≤ 20%)
+  state.feedTroughs.filter((t) => divIds.has(t.divisionId) && t.active !== false).forEach((t) => {
+    const pct = calculateHPPercentage(t.currentAmount, t.capacity)
+    if (pct <= 20) out.push({
+      type: 'cocho_critico', referenceType: 'feedTrough', referenceId: t.id, propertyId,
+      title: `Cocho ${t.identifier} crítico`,
+      message: `Restam ${t.currentAmount} kg de ${t.capacity} kg (${Math.round(pct)}%).`,
+      severity: 'critico',
+    })
+  })
+
+  // Estoque baixo (medicamento e alimento)
+  state.medicationStocks.filter((s) => s.propertyId === propertyId && s.active !== false).forEach((s) => {
+    if (s.quantity <= s.minimumStock) {
+      const med = state.medications.find((m) => m.id === s.medicationId)
+      out.push({
+        type: 'estoque_baixo', referenceType: 'medicationStock', referenceId: s.id, propertyId,
+        title: `Estoque baixo — ${med?.commercialName ?? 'medicamento'}`,
+        message: `${s.quantity} ${s.unit} abaixo do mínimo de ${s.minimumStock}.`,
+        severity: 'atencao',
+      })
+    }
+  })
+  state.feedStocks.filter((s) => s.propertyId === propertyId && s.active !== false).forEach((s) => {
+    if (s.quantity <= s.minimumStock) {
+      const feed = state.feeds.find((f) => f.id === s.feedId)
+      out.push({
+        type: 'estoque_baixo', referenceType: 'feedStock', referenceId: s.id, propertyId,
+        title: `Estoque baixo — ${feed?.name ?? 'alimento'}`,
+        message: `${s.quantity} ${s.unit} abaixo do mínimo de ${s.minimumStock}.`,
+        severity: 'atencao',
+      })
+    }
+  })
+
+  // Pesagem atrasada por rebanho
+  state.herds.filter((h) => h.farmId === propertyId && h.active !== false).forEach((h) => {
+    const members = state.bovines.filter((b) => b.herdId === h.id && b.active !== false)
+    const latest = members.reduce((mx, b) => (b.lastWeighDate > mx ? b.lastWeighDate : mx), '')
+    if (!latest) return
+    const days = daysFromToday(latest)
+    if (days >= WEIGH_LATE_DAYS) out.push({
+      type: 'pesagem_atrasada', referenceType: 'herd', referenceId: h.id, propertyId,
+      title: `Pesagem atrasada — ${h.name}`,
+      message: `Último registro há ${days} dias.`,
+      severity: 'atencao',
+    })
+  })
+
+  // Evento sanitário próximo (pendente, ≤ 14 dias)
+  state.sanitaryEvents.filter((e) => e.propertyId === propertyId && e.status === 'pendente' && e.active !== false).forEach((e) => {
+    const d = daysUntil(e.scheduledDate)
+    if (d >= 0 && d <= EVENT_SOON_DAYS) out.push({
+      type: 'evento_proximo', referenceType: 'sanitaryEvent', referenceId: e.id, propertyId,
+      title: `${e.type} em breve`,
+      message: `Programado para ${formatDate(e.scheduledDate)} (${d} dia${d !== 1 ? 's' : ''}).`,
+      severity: 'informativo',
+    })
+  })
+
+  // Convite pendente para o usuário corrente
+  state.invitations.filter((i) => i.invitedUserId === state.currentUserId && i.status === 'pendente').forEach((i) => {
+    out.push({
+      type: 'convite', referenceType: 'invitation', referenceId: i.id, propertyId: i.propertyId,
+      title: 'Novo convite', message: 'Você tem um convite pendente para uma propriedade.',
+      severity: 'informativo',
+    })
+  })
+
+  return out
 }
 
 interface FarmState {
@@ -176,6 +285,11 @@ interface FarmState {
   setBovineMembership: (bovineId: string, herdId: string | null, opts: { startDate: string; entryWeightKg?: number }) => void
   transferBovine: (transfer: BovineTransfer) => void
   // Financeiro (RF39–RF41)
+  // Notificações (RF67)
+  reconcileNotifications: () => void
+  markNotificationRead: (notificationId: string) => void
+  markNotificationDismissed: (notificationId: string) => void
+  markAllNotificationsRead: () => void
   addExpense: (expense: Expense) => void
   updateExpense: (id: string, updates: Partial<Expense>) => void
   addSaleLot: (lot: SaleLot, bovineIds: string[]) => void
@@ -736,6 +850,139 @@ export const useFarmStore = create<FarmState>()(
         }),
 
       // ── Financeiro ──
+
+      // ── Notificações (RF67) ──
+
+      // Materializa as condições vigentes em notificações (sem duplicar enquanto
+      // a condição persiste), resolve as que deixaram de valer e garante o
+      // estado de leitura por usuário (notificacao_usuario) para o usuário atual.
+      reconcileNotifications: () =>
+        set((state) => {
+          const now = new Date().toISOString()
+          const conditions = deriveConditions(state)
+          const condKey = (c: { type: string; referenceId?: string }) => `${c.type}:${c.referenceId ?? ''}`
+          const condByProp = new Map<string, Set<string>>()
+          conditions.forEach((c) => {
+            if (!condByProp.has(c.propertyId)) condByProp.set(c.propertyId, new Set())
+            condByProp.get(c.propertyId)!.add(condKey(c))
+          })
+
+          // Resolve notificações cuja condição não vale mais (apenas das
+          // propriedades reconciliadas nesta passada, isto é, as com condições
+          // derivadas + a propriedade ativa).
+          const reconciledProps = new Set<string>([
+            ...(state.activePropertyId ? [state.activePropertyId] : []),
+            ...condByProp.keys(),
+          ])
+          let notifications = state.notifications.map((n) => {
+            if (n.resolved || !reconciledProps.has(n.propertyId)) return n
+            const active = condByProp.get(n.propertyId)
+            if (!active || !active.has(condKey(n))) {
+              return { ...n, resolved: true, resolutionDate: now, updatedAt: now }
+            }
+            return n
+          })
+
+          // Cria notificação para cada condição ainda sem uma ativa.
+          const existingActive = new Set(
+            notifications.filter((n) => !n.resolved).map((n) => `${n.propertyId}|${condKey(n)}`),
+          )
+          conditions.forEach((c) => {
+            const k = `${c.propertyId}|${condKey(c)}`
+            if (!existingActive.has(k)) {
+              existingActive.add(k)
+              notifications = [
+                ...notifications,
+                {
+                  id: crypto.randomUUID(),
+                  propertyId: c.propertyId,
+                  type: c.type,
+                  title: c.title,
+                  message: c.message,
+                  severity: c.severity,
+                  referenceType: c.referenceType,
+                  referenceId: c.referenceId,
+                  resolved: false,
+                  active: true,
+                  createdAt: now,
+                  updatedAt: now,
+                },
+              ]
+            }
+          })
+
+          // Garante notificacao_usuario para o usuário atual.
+          let notificationUsers = state.notificationUsers
+          if (state.currentUserId) {
+            const have = new Set(
+              notificationUsers.filter((nu) => nu.userId === state.currentUserId).map((nu) => nu.notificationId),
+            )
+            const toAdd = notifications
+              .filter((n) => !n.resolved && !have.has(n.id))
+              .map((n) => ({
+                id: crypto.randomUUID(),
+                notificationId: n.id,
+                userId: state.currentUserId as string,
+                read: false,
+                dismissed: false,
+                active: true,
+                createdAt: now,
+                updatedAt: now,
+              }))
+            if (toAdd.length > 0) notificationUsers = [...notificationUsers, ...toAdd]
+          }
+
+          return { notifications, notificationUsers }
+        }),
+
+      markNotificationRead: (notificationId) =>
+        set((state) => {
+          const now = new Date().toISOString()
+          const exists = state.notificationUsers.some(
+            (nu) => nu.notificationId === notificationId && nu.userId === state.currentUserId,
+          )
+          if (exists) {
+            return {
+              notificationUsers: state.notificationUsers.map((nu) =>
+                nu.notificationId === notificationId && nu.userId === state.currentUserId
+                  ? { ...nu, read: true, readDate: now, updatedAt: now }
+                  : nu,
+              ),
+            }
+          }
+          if (!state.currentUserId) return state
+          return {
+            notificationUsers: [
+              ...state.notificationUsers,
+              { id: crypto.randomUUID(), notificationId, userId: state.currentUserId, read: true, readDate: now, dismissed: false, active: true, createdAt: now, updatedAt: now },
+            ],
+          }
+        }),
+
+      markNotificationDismissed: (notificationId) =>
+        set((state) => ({
+          notificationUsers: state.notificationUsers.map((nu) =>
+            nu.notificationId === notificationId && nu.userId === state.currentUserId
+              ? { ...nu, dismissed: true, read: true, updatedAt: new Date().toISOString() }
+              : nu,
+          ),
+        })),
+
+      markAllNotificationsRead: () =>
+        set((state) => {
+          const now = new Date().toISOString()
+          const propertyId = state.activePropertyId
+          const ids = new Set(
+            state.notifications.filter((n) => !n.resolved && n.propertyId === propertyId).map((n) => n.id),
+          )
+          return {
+            notificationUsers: state.notificationUsers.map((nu) =>
+              ids.has(nu.notificationId) && nu.userId === state.currentUserId && !nu.read
+                ? { ...nu, read: true, readDate: now, updatedAt: now }
+                : nu,
+            ),
+          }
+        }),
 
       addExpense: (expense) =>
         set((state) => ({ expenses: [...state.expenses, expense] })),
