@@ -142,18 +142,28 @@ interface FarmState {
   deallocateHerd: (herdId: string) => void
   refillFeedTrough: (troughId: string, refill: Refill, newAmount: number) => void
   updateDivision: (id: string, updates: Partial<Division>) => void
+  updateHerd: (id: string, updates: Partial<Herd>) => void
   addProperty: (farm: Farm) => void
+  updateProperty: (id: string, updates: Partial<Farm>) => void
   addHerd: (herd: Herd) => void
   addDivision: (division: Division) => void
   addForagePlanting: (planting: ForagePlanting) => void
   addSeason: (season: Season) => void
+  updateSeason: (id: string, updates: Partial<Season>) => void
   // Cadastros — catálogos e agenda (RF18–RF23)
   addFeedTrough: (trough: FeedTrough) => void
+  updateFeedTrough: (id: string, updates: Partial<FeedTrough>) => void
   addMedication: (medication: Medication) => void
+  updateMedication: (id: string, updates: Partial<Medication>) => void
   addFeed: (feed: Feed) => void
+  updateFeed: (id: string, updates: Partial<Feed>) => void
   addExpenseCategory: (category: ExpenseCategory) => void
+  updateExpenseCategory: (id: string, updates: Partial<ExpenseCategory>) => void
+  updateForagePlanting: (id: string, updates: Partial<ForagePlanting>) => void
   addSanitaryEvent: (event: SanitaryEvent) => void
+  updateSanitaryEvent: (id: string, updates: Partial<SanitaryEvent>) => void
   addTask: (task: Task) => void
+  updateTask: (id: string, updates: Partial<Task>) => void
   // Operações (RF24–RF33) — Slice 1: estoques, pesagem, GMD
   addMedicationStock: (entry: MedicationStock) => void
   addFeedStock: (entry: FeedStock) => void
@@ -167,7 +177,9 @@ interface FarmState {
   transferBovine: (transfer: BovineTransfer) => void
   // Financeiro (RF39–RF41)
   addExpense: (expense: Expense) => void
+  updateExpense: (id: string, updates: Partial<Expense>) => void
   addSaleLot: (lot: SaleLot, bovineIds: string[]) => void
+  updateSaleLot: (id: string, updates: Partial<SaleLot>) => void
   registerSale: (sale: Sale) => void
 }
 
@@ -516,6 +528,17 @@ export const useFarmStore = create<FarmState>()(
           }
         }),
 
+      updateHerd: (id, updates) =>
+        set((state) => ({
+          herds: state.herds.map((h) => (h.id === id ? { ...h, ...updates } : h)),
+        })),
+
+      updateProperty: (id, updates) =>
+        set((state) => ({
+          farms: state.farms.map((f) => (f.id === id ? { ...f, ...updates } : f)),
+          farm: state.farm?.id === id ? { ...state.farm, ...updates } : state.farm,
+        })),
+
       addHerd: (herd) =>
         set((state) => ({ herds: [...state.herds, herd] })),
 
@@ -544,23 +567,63 @@ export const useFarmStore = create<FarmState>()(
       addSeason: (season) =>
         set((state) => ({ seasons: [...state.seasons, season] })),
 
+      updateSeason: (id, updates) =>
+        set((state) => ({
+          seasons: state.seasons.map((s) => (s.id === id ? { ...s, ...updates } : s)),
+        })),
+
       addFeedTrough: (trough) =>
         set((state) => ({ feedTroughs: [...state.feedTroughs, trough] })),
+
+      updateFeedTrough: (id, updates) =>
+        set((state) => ({
+          feedTroughs: state.feedTroughs.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+        })),
 
       addMedication: (medication) =>
         set((state) => ({ medications: [...state.medications, medication] })),
 
+      updateMedication: (id, updates) =>
+        set((state) => ({
+          medications: state.medications.map((m) => (m.id === id ? { ...m, ...updates } : m)),
+        })),
+
       addFeed: (feed) =>
         set((state) => ({ feeds: [...state.feeds, feed] })),
+
+      updateFeed: (id, updates) =>
+        set((state) => ({
+          feeds: state.feeds.map((f) => (f.id === id ? { ...f, ...updates } : f)),
+        })),
 
       addExpenseCategory: (category) =>
         set((state) => ({ expenseCategories: [...state.expenseCategories, category] })),
 
+      updateExpenseCategory: (id, updates) =>
+        set((state) => ({
+          expenseCategories: state.expenseCategories.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+        })),
+
+      updateForagePlanting: (id, updates) =>
+        set((state) => ({
+          foragePlantings: state.foragePlantings.map((p) => (p.id === id ? { ...p, ...updates } : p)),
+        })),
+
       addSanitaryEvent: (event) =>
         set((state) => ({ sanitaryEvents: [...state.sanitaryEvents, event] })),
 
+      updateSanitaryEvent: (id, updates) =>
+        set((state) => ({
+          sanitaryEvents: state.sanitaryEvents.map((e) => (e.id === id ? { ...e, ...updates } : e)),
+        })),
+
       addTask: (task) =>
         set((state) => ({ tasks: [...state.tasks, task] })),
+
+      updateTask: (id, updates) =>
+        set((state) => ({
+          tasks: state.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+        })),
 
       // ── Operações (Slice 1) ──
 
@@ -677,6 +740,11 @@ export const useFarmStore = create<FarmState>()(
       addExpense: (expense) =>
         set((state) => ({ expenses: [...state.expenses, expense] })),
 
+      updateExpense: (id, updates) =>
+        set((state) => ({
+          expenses: state.expenses.map((e) => (e.id === id ? { ...e, ...updates } : e)),
+        })),
+
       // Lote comercial (RF40): cria o lote e os vínculos N:N com os bovinos.
       addSaleLot: (lot, bovineIds) =>
         set((state) => ({
@@ -692,6 +760,11 @@ export const useFarmStore = create<FarmState>()(
               updatedAt: lot.updatedAt ?? new Date().toISOString(),
             })),
           ],
+        })),
+
+      updateSaleLot: (id, updates) =>
+        set((state) => ({
+          saleLots: state.saleLots.map((l) => (l.id === id ? { ...l, ...updates } : l)),
         })),
 
       // Venda (RF41): ao confirmar, marca o lote como vendido, inativa os bovinos

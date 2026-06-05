@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 
 import { useFarmStore } from '@/store/useFarmStore'
@@ -46,9 +46,13 @@ const STATUS_OPTIONS: SelectOption[] = [
 
 export default function DivisionRegister() {
   const navigate    = useNavigate()
+  const { id }      = useParams<{ id: string }>()
+  const isEdit      = Boolean(id)
   const farm        = useFarmStore((s) => s.farm)
   const forages     = useFarmStore((s) => s.forages)
+  const existing    = useFarmStore((s) => s.divisions.find((d) => d.id === id))
   const addDivision = useFarmStore((s) => s.addDivision)
+  const updateDivision = useFarmStore((s) => s.updateDivision)
   const toast       = useToast()
   const { can }     = useAccess()
 
@@ -59,7 +63,12 @@ export default function DivisionRegister() {
   const [submitAttempted, setSubmitAttempted] = useState(false)
 
   const [fields, setFields] = useState<Fields>({
-    name: '', area: '', type: '', status: 'active', forageId: '', forageStartDate: '',
+    name: existing?.name ?? '',
+    area: existing?.area != null ? String(existing.area) : '',
+    type: existing?.type ?? '',
+    status: existing?.status ?? 'active',
+    forageId: existing?.forageId ?? '',
+    forageStartDate: existing?.forageStartDate ?? '',
   })
 
   const errors = validate(fields)
@@ -81,22 +90,29 @@ export default function DivisionRegister() {
     setSaving(true)
     setTimeout(() => {
       const now = new Date().toISOString()
-      const division: Division = {
-        id: crypto.randomUUID(),
-        farmId: farm?.id ?? '',
+      const common = {
         name: fields.name.trim(),
         area: Number(fields.area),
         type: fields.type as DivisionType,
         status: fields.status as Division['status'],
         forageId: fields.forageId || undefined,
         forageStartDate: fields.forageStartDate || undefined,
-        polygon: [],
-        active: true,
-        createdAt: now,
-        updatedAt: now,
       }
-      addDivision(division)
-      toast.success('Divisão cadastrada com sucesso')
+      if (isEdit && id) {
+        updateDivision(id, { ...common, updatedAt: now })
+        toast.success('Divisão atualizada com sucesso')
+      } else {
+        addDivision({
+          id: crypto.randomUUID(),
+          farmId: farm?.id ?? '',
+          ...common,
+          polygon: [],
+          active: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+        toast.success('Divisão cadastrada com sucesso')
+      }
       setSaving(false)
       navigate(-1)
     }, 600)
@@ -110,9 +126,9 @@ export default function DivisionRegister() {
 
   return (
     <FormScreen
-      title="Nova divisão"
-      subtitle="Cadastre um piquete, pastagem ou curral"
-      submitLabel="Cadastrar divisão"
+      title={isEdit ? 'Editar divisão' : 'Nova divisão'}
+      subtitle={isEdit ? 'Atualize os dados da divisão' : 'Cadastre um piquete, pastagem ou curral'}
+      submitLabel={isEdit ? 'Atualizar' : 'Cadastrar divisão'}
       onSubmit={handleSave}
       saving={saving}
       errorCount={submitAttempted ? errorCount : 0}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useAccess } from '@/hooks/useAccess'
@@ -8,7 +8,6 @@ import FormScreen, { FormSection } from '@/components/form/FormScreen.tsx'
 import Input from '@/components/ui/Input.tsx'
 import Select from '@/components/ui/Select.tsx'
 import type { SelectOption } from '@/components/ui/Select.tsx'
-import type { Expense } from '@/types/domain'
 
 interface Fields {
   categoryId: string
@@ -23,11 +22,15 @@ type FieldKey = keyof Fields
 
 export default function ExpenseRegister() {
   const navigate   = useNavigate()
+  const { id }     = useParams<{ id: string }>()
+  const isEdit     = Boolean(id)
   const farm       = useFarmStore((s) => s.farm)
   const categories = useFarmStore((s) => s.expenseCategories)
   const divisions  = useFarmStore((s) => s.divisions)
   const herds      = useFarmStore((s) => s.herds)
+  const existing   = useFarmStore((s) => s.expenses.find((e) => e.id === id))
   const addExpense = useFarmStore((s) => s.addExpense)
+  const updateExpense = useFarmStore((s) => s.updateExpense)
   const toast      = useToast()
   const { can }    = useAccess()
 
@@ -36,7 +39,12 @@ export default function ExpenseRegister() {
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({})
   const [submitAttempted, setSubmitAttempted] = useState(false)
   const [fields, setFields] = useState<Fields>({
-    categoryId: '', description: '', amount: '', date: today, divisionId: '', herdId: '',
+    categoryId: existing?.categoryId ?? '',
+    description: existing?.description ?? '',
+    amount: existing?.amount != null ? String(existing.amount) : '',
+    date: existing?.date ?? today,
+    divisionId: existing?.divisionId ?? '',
+    herdId: existing?.herdId ?? '',
   })
 
   function validate(f: Fields): Partial<Record<FieldKey, string>> {
@@ -72,21 +80,28 @@ export default function ExpenseRegister() {
     setSaving(true)
     setTimeout(() => {
       const now = new Date().toISOString()
-      const expense: Expense = {
-        id: crypto.randomUUID(),
-        propertyId: farm?.id ?? '',
+      const common = {
         categoryId: fields.categoryId,
         divisionId: fields.divisionId || undefined,
         herdId: fields.herdId || undefined,
         description: fields.description.trim(),
         amount: Number(fields.amount),
         date: fields.date,
-        active: true,
-        createdAt: now,
-        updatedAt: now,
       }
-      addExpense(expense)
-      toast.success('Despesa registrada')
+      if (isEdit && id) {
+        updateExpense(id, { ...common, updatedAt: now })
+        toast.success('Despesa atualizada')
+      } else {
+        addExpense({
+          id: crypto.randomUUID(),
+          propertyId: farm?.id ?? '',
+          ...common,
+          active: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+        toast.success('Despesa registrada')
+      }
       setSaving(false)
       navigate(-1)
     }, 600)
@@ -94,9 +109,9 @@ export default function ExpenseRegister() {
 
   return (
     <FormScreen
-      title="Nova despesa"
+      title={isEdit ? 'Editar despesa' : 'Nova despesa'}
       subtitle="Registra um gasto e classifica por categoria"
-      submitLabel="Registrar despesa"
+      submitLabel={isEdit ? 'Atualizar' : 'Registrar despesa'}
       onSubmit={handleSave}
       saving={saving}
       errorCount={submitAttempted ? errorCount : 0}

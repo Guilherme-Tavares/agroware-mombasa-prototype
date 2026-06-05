@@ -1,11 +1,10 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useToast } from '@/hooks/useToast'
 import FormScreen, { FormSection } from '@/components/form/FormScreen.tsx'
 import Input from '@/components/ui/Input.tsx'
-import type { Farm } from '@/types/domain'
 
 interface Fields {
   name: string
@@ -27,14 +26,23 @@ function validate(f: Fields): Partial<Record<FieldKey, string>> {
 
 export default function PropertyRegister() {
   const navigate    = useNavigate()
+  const { id }      = useParams<{ id: string }>()
+  const isEdit      = Boolean(id)
   const currentUserId = useFarmStore((s) => s.currentUserId)
+  const existing    = useFarmStore((s) => s.farms.find((f) => f.id === id))
   const addProperty = useFarmStore((s) => s.addProperty)
+  const updateProperty = useFarmStore((s) => s.updateProperty)
   const toast       = useToast()
 
   const [saving, setSaving] = useState(false)
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({})
   const [submitAttempted, setSubmitAttempted] = useState(false)
-  const [fields, setFields] = useState<Fields>({ name: '', city: '', uf: '', totalArea: '' })
+  const [fields, setFields] = useState<Fields>({
+    name: existing?.name ?? '',
+    city: existing?.city ?? '',
+    uf: existing?.state ?? '',
+    totalArea: existing?.totalArea != null ? String(existing.totalArea) : '',
+  })
 
   const errors = validate(fields)
   const errorCount = Object.keys(errors).length
@@ -49,31 +57,40 @@ export default function PropertyRegister() {
     setSaving(true)
     setTimeout(() => {
       const now = new Date().toISOString()
-      const farm: Farm = {
-        id: crypto.randomUUID(),
-        ownerId: currentUserId ?? undefined,
+      const common = {
         name: fields.name.trim(),
         city: fields.city.trim(),
         state: fields.uf.trim().toUpperCase(),
         totalArea: fields.totalArea ? Number(fields.totalArea) : 0,
-        polygon: [],
-        mapBaseCapturedAt: null,
-        active: true,
-        createdAt: now,
-        updatedAt: now,
       }
-      addProperty(farm)
-      toast.success('Propriedade criada. Agora demarque o contorno.')
-      setSaving(false)
-      navigate('/demarcation')
+      if (isEdit && id) {
+        updateProperty(id, { ...common, updatedAt: now })
+        toast.success('Propriedade atualizada')
+        setSaving(false)
+        navigate(-1)
+      } else {
+        addProperty({
+          id: crypto.randomUUID(),
+          ownerId: currentUserId ?? undefined,
+          ...common,
+          polygon: [],
+          mapBaseCapturedAt: null,
+          active: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+        toast.success('Propriedade criada. Agora demarque o contorno.')
+        setSaving(false)
+        navigate('/demarcation')
+      }
     }, 600)
   }
 
   return (
     <FormScreen
-      title="Nova propriedade"
-      subtitle="Você será o dono e produtor da propriedade criada"
-      submitLabel="Criar propriedade"
+      title={isEdit ? 'Editar propriedade' : 'Nova propriedade'}
+      subtitle={isEdit ? 'Atualize os dados da propriedade' : 'Você será o dono e produtor da propriedade criada'}
+      submitLabel={isEdit ? 'Atualizar' : 'Criar propriedade'}
       onSubmit={handleSave}
       saving={saving}
       errorCount={submitAttempted ? errorCount : 0}

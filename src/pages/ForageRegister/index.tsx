@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Info } from 'lucide-react'
 
 import { useFarmStore } from '@/store/useFarmStore'
@@ -9,7 +9,6 @@ import FormScreen, { FormSection } from '@/components/form/FormScreen.tsx'
 import Input from '@/components/ui/Input.tsx'
 import Select from '@/components/ui/Select.tsx'
 import type { SelectOption } from '@/components/ui/Select.tsx'
-import type { ForagePlanting } from '@/types/domain'
 
 interface Fields {
   divisionId: string
@@ -21,17 +20,25 @@ type FieldKey = keyof Fields
 
 export default function ForageRegister() {
   const navigate   = useNavigate()
+  const { id }     = useParams<{ id: string }>()
+  const isEdit     = Boolean(id)
   const divisions  = useFarmStore((s) => s.divisions)
   const forages    = useFarmStore((s) => s.forages)
   const plantings  = useFarmStore((s) => s.foragePlantings)
+  const existing   = useFarmStore((s) => s.foragePlantings.find((p) => p.id === id))
   const addForagePlanting = useFarmStore((s) => s.addForagePlanting)
+  const updateForagePlanting = useFarmStore((s) => s.updateForagePlanting)
   const toast      = useToast()
   const { can }    = useAccess()
 
   const [saving, setSaving] = useState(false)
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({})
   const [submitAttempted, setSubmitAttempted] = useState(false)
-  const [fields, setFields] = useState<Fields>({ divisionId: '', speciesId: '', plantingDate: '' })
+  const [fields, setFields] = useState<Fields>({
+    divisionId: existing?.divisionId ?? '',
+    speciesId: existing?.speciesId ?? '',
+    plantingDate: existing?.plantingDate ?? '',
+  })
 
   function validate(f: Fields): Partial<Record<FieldKey, string>> {
     const e: Partial<Record<FieldKey, string>> = {}
@@ -51,7 +58,8 @@ export default function ForageRegister() {
   const speciesOptions: SelectOption[] = forages.map((f) => ({ value: f.id, label: f.name }))
 
   // Forragem ativa atual da divisão selecionada (a regra desativará ao salvar).
-  const currentActive = fields.divisionId
+  // No modo edição não se aplica (estamos editando a própria forragem).
+  const currentActive = !isEdit && fields.divisionId
     ? plantings.find((p) => p.divisionId === fields.divisionId && p.active !== false)
     : undefined
   const currentSpecies = currentActive
@@ -65,18 +73,27 @@ export default function ForageRegister() {
     setTimeout(() => {
       const now = new Date().toISOString()
       const species = forages.find((f) => f.id === fields.speciesId)
-      const planting: ForagePlanting = {
-        id: crypto.randomUUID(),
-        divisionId: fields.divisionId,
-        speciesId: fields.speciesId,
-        type: species?.name ?? 'Forragem',
-        plantingDate: fields.plantingDate || undefined,
-        active: true,
-        createdAt: now,
-        updatedAt: now,
+      if (isEdit && id) {
+        updateForagePlanting(id, {
+          speciesId: fields.speciesId,
+          type: species?.name ?? 'Forragem',
+          plantingDate: fields.plantingDate || undefined,
+          updatedAt: now,
+        })
+        toast.success('Forragem atualizada')
+      } else {
+        addForagePlanting({
+          id: crypto.randomUUID(),
+          divisionId: fields.divisionId,
+          speciesId: fields.speciesId,
+          type: species?.name ?? 'Forragem',
+          plantingDate: fields.plantingDate || undefined,
+          active: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+        toast.success('Forragem cadastrada na divisão')
       }
-      addForagePlanting(planting)
-      toast.success('Forragem cadastrada na divisão')
       setSaving(false)
       navigate(-1)
     }, 600)
@@ -84,9 +101,9 @@ export default function ForageRegister() {
 
   return (
     <FormScreen
-      title="Nova forragem"
+      title={isEdit ? 'Editar forragem' : 'Nova forragem'}
       subtitle="Registre a forragem plantada em uma divisão"
-      submitLabel="Cadastrar forragem"
+      submitLabel={isEdit ? 'Atualizar' : 'Cadastrar forragem'}
       onSubmit={handleSave}
       saving={saving}
       errorCount={submitAttempted ? errorCount : 0}
@@ -100,6 +117,7 @@ export default function ForageRegister() {
           value={fields.divisionId}
           options={divisionOptions}
           placeholder="Selecione..."
+          disabled={isEdit}
           onChange={(e) => set('divisionId', e.target.value)}
           onBlur={() => touch('divisionId')}
           error={err('divisionId')}

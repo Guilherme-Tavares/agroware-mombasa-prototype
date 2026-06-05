@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useAccess } from '@/hooks/useAccess'
@@ -8,7 +8,7 @@ import FormScreen, { FormSection } from '@/components/form/FormScreen.tsx'
 import Input from '@/components/ui/Input.tsx'
 import Select from '@/components/ui/Select.tsx'
 import type { SelectOption } from '@/components/ui/Select.tsx'
-import type { Feed, FeedType } from '@/types/domain'
+import type { FeedType } from '@/types/domain'
 
 interface Fields {
   name: string
@@ -29,22 +29,30 @@ const TYPE_OPTIONS: SelectOption[] = [
 
 export default function FeedRegister() {
   const navigate = useNavigate()
+  const { id }   = useParams<{ id: string }>()
+  const isEdit   = Boolean(id)
   const farm     = useFarmStore((s) => s.farm)
   const feeds    = useFarmStore((s) => s.feeds)
+  const existing = useFarmStore((s) => s.feeds.find((f) => f.id === id))
   const addFeed  = useFarmStore((s) => s.addFeed)
+  const updateFeed = useFarmStore((s) => s.updateFeed)
   const toast    = useToast()
   const { can }  = useAccess()
 
   const [saving, setSaving] = useState(false)
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({})
   const [submitAttempted, setSubmitAttempted] = useState(false)
-  const [fields, setFields] = useState<Fields>({ name: '', type: '', protein: '' })
+  const [fields, setFields] = useState<Fields>({
+    name: existing?.name ?? '',
+    type: existing?.type ?? '',
+    protein: existing?.proteinPercentage != null ? String(existing.proteinPercentage) : '',
+  })
 
   function validate(f: Fields): Partial<Record<FieldKey, string>> {
     const e: Partial<Record<FieldKey, string>> = {}
     if (!f.name.trim()) e.name = 'Nome é obrigatório'
     else if (feeds.some(
-      (x) => x.propertyId === farm?.id && x.name.toLowerCase() === f.name.trim().toLowerCase(),
+      (x) => x.id !== id && x.propertyId === farm?.id && x.name.toLowerCase() === f.name.trim().toLowerCase(),
     )) e.name = 'Já existe um alimento com este nome'
     if (!f.type) e.type = 'Tipo é obrigatório'
     if (f.protein && (Number(f.protein) < 0 || Number(f.protein) > 100)) e.protein = 'Proteína entre 0 e 100%'
@@ -64,18 +72,25 @@ export default function FeedRegister() {
     setSaving(true)
     setTimeout(() => {
       const now = new Date().toISOString()
-      const feed: Feed = {
-        id: crypto.randomUUID(),
-        propertyId: farm?.id,
+      const common = {
         name: fields.name.trim(),
         type: fields.type as FeedType,
         proteinPercentage: fields.protein ? Number(fields.protein) : undefined,
-        active: true,
-        createdAt: now,
-        updatedAt: now,
       }
-      addFeed(feed)
-      toast.success('Alimento cadastrado com sucesso')
+      if (isEdit && id) {
+        updateFeed(id, { ...common, updatedAt: now })
+        toast.success('Alimento atualizado com sucesso')
+      } else {
+        addFeed({
+          id: crypto.randomUUID(),
+          propertyId: farm?.id,
+          ...common,
+          active: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+        toast.success('Alimento cadastrado com sucesso')
+      }
       setSaving(false)
       navigate(-1)
     }, 600)
@@ -83,9 +98,9 @@ export default function FeedRegister() {
 
   return (
     <FormScreen
-      title="Novo alimento"
+      title={isEdit ? 'Editar alimento' : 'Novo alimento'}
       subtitle="Catálogo de alimentos da propriedade"
-      submitLabel="Cadastrar alimento"
+      submitLabel={isEdit ? 'Atualizar' : 'Cadastrar alimento'}
       onSubmit={handleSave}
       saving={saving}
       errorCount={submitAttempted ? errorCount : 0}

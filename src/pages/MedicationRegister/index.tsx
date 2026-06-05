@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useAccess } from '@/hooks/useAccess'
@@ -8,7 +8,7 @@ import FormScreen, { FormSection } from '@/components/form/FormScreen.tsx'
 import Input from '@/components/ui/Input.tsx'
 import Select from '@/components/ui/Select.tsx'
 import type { SelectOption } from '@/components/ui/Select.tsx'
-import type { Medication, MedicationType } from '@/types/domain'
+import type { MedicationType } from '@/types/domain'
 
 interface Fields {
   commercialName: string
@@ -28,22 +28,30 @@ const TYPE_OPTIONS: SelectOption[] = [
 
 export default function MedicationRegister() {
   const navigate      = useNavigate()
+  const { id }        = useParams<{ id: string }>()
+  const isEdit        = Boolean(id)
   const farm          = useFarmStore((s) => s.farm)
   const medications   = useFarmStore((s) => s.medications)
+  const existing      = useFarmStore((s) => s.medications.find((m) => m.id === id))
   const addMedication = useFarmStore((s) => s.addMedication)
+  const updateMedication = useFarmStore((s) => s.updateMedication)
   const toast         = useToast()
   const { can }       = useAccess()
 
   const [saving, setSaving] = useState(false)
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({})
   const [submitAttempted, setSubmitAttempted] = useState(false)
-  const [fields, setFields] = useState<Fields>({ commercialName: '', activeIngredient: '', type: '' })
+  const [fields, setFields] = useState<Fields>({
+    commercialName: existing?.commercialName ?? '',
+    activeIngredient: existing?.activeIngredient ?? '',
+    type: existing?.type ?? '',
+  })
 
   function validate(f: Fields): Partial<Record<FieldKey, string>> {
     const e: Partial<Record<FieldKey, string>> = {}
     if (!f.commercialName.trim()) e.commercialName = 'Nome comercial é obrigatório'
     else if (medications.some(
-      (m) => m.propertyId === farm?.id && m.commercialName.toLowerCase() === f.commercialName.trim().toLowerCase(),
+      (m) => m.id !== id && m.propertyId === farm?.id && m.commercialName.toLowerCase() === f.commercialName.trim().toLowerCase(),
     )) e.commercialName = 'Já existe um medicamento com este nome'
     if (!f.type) e.type = 'Tipo é obrigatório'
     return e
@@ -62,18 +70,25 @@ export default function MedicationRegister() {
     setSaving(true)
     setTimeout(() => {
       const now = new Date().toISOString()
-      const medication: Medication = {
-        id: crypto.randomUUID(),
-        propertyId: farm?.id ?? '',
+      const common = {
         commercialName: fields.commercialName.trim(),
         activeIngredient: fields.activeIngredient.trim() || undefined,
         type: fields.type as MedicationType,
-        active: true,
-        createdAt: now,
-        updatedAt: now,
       }
-      addMedication(medication)
-      toast.success('Medicamento cadastrado com sucesso')
+      if (isEdit && id) {
+        updateMedication(id, { ...common, updatedAt: now })
+        toast.success('Medicamento atualizado com sucesso')
+      } else {
+        addMedication({
+          id: crypto.randomUUID(),
+          propertyId: farm?.id ?? '',
+          ...common,
+          active: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+        toast.success('Medicamento cadastrado com sucesso')
+      }
       setSaving(false)
       navigate(-1)
     }, 600)
@@ -81,9 +96,9 @@ export default function MedicationRegister() {
 
   return (
     <FormScreen
-      title="Novo medicamento"
+      title={isEdit ? 'Editar medicamento' : 'Novo medicamento'}
       subtitle="Catálogo de medicamentos da propriedade"
-      submitLabel="Cadastrar medicamento"
+      submitLabel={isEdit ? 'Atualizar' : 'Cadastrar medicamento'}
       onSubmit={handleSave}
       saving={saving}
       errorCount={submitAttempted ? errorCount : 0}

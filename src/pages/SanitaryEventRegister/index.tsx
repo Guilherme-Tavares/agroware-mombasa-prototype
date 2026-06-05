@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 
 import { useFarmStore } from '@/store/useFarmStore'
@@ -10,7 +10,6 @@ import Input from '@/components/ui/Input.tsx'
 import Select from '@/components/ui/Select.tsx'
 import Textarea from '@/components/ui/Textarea.tsx'
 import type { SelectOption } from '@/components/ui/Select.tsx'
-import type { SanitaryEvent } from '@/types/domain'
 
 interface Fields {
   type: string
@@ -25,11 +24,15 @@ type FieldKey = keyof Fields
 
 export default function SanitaryEventRegister() {
   const navigate    = useNavigate()
+  const { id }      = useParams<{ id: string }>()
+  const isEdit      = Boolean(id)
   const farm        = useFarmStore((s) => s.farm)
   const herds       = useFarmStore((s) => s.herds)
   const bovines     = useFarmStore((s) => s.bovines)
   const medications = useFarmStore((s) => s.medications)
+  const existing    = useFarmStore((s) => s.sanitaryEvents.find((e) => e.id === id))
   const addEvent    = useFarmStore((s) => s.addSanitaryEvent)
+  const updateEvent = useFarmStore((s) => s.updateSanitaryEvent)
   const toast       = useToast()
   const { can }     = useAccess()
 
@@ -37,7 +40,12 @@ export default function SanitaryEventRegister() {
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({})
   const [submitAttempted, setSubmitAttempted] = useState(false)
   const [fields, setFields] = useState<Fields>({
-    type: '', scheduledDate: '', medicationId: '', targetKind: '', targetId: '', notes: '',
+    type: existing?.type ?? '',
+    scheduledDate: existing?.scheduledDate ?? '',
+    medicationId: existing?.medicationId ?? '',
+    targetKind: existing?.herdId ? 'herd' : existing?.bovineId ? 'bovine' : '',
+    targetId: existing?.herdId ?? existing?.bovineId ?? '',
+    notes: existing?.notes ?? '',
   })
 
   function validate(f: Fields): Partial<Record<FieldKey, string>> {
@@ -72,22 +80,29 @@ export default function SanitaryEventRegister() {
     setSaving(true)
     setTimeout(() => {
       const now = new Date().toISOString()
-      const event: SanitaryEvent = {
-        id: crypto.randomUUID(),
-        propertyId: farm?.id ?? '',
+      const common = {
         type: fields.type.trim(),
         scheduledDate: fields.scheduledDate,
-        status: 'pendente',
         medicationId: fields.medicationId || undefined,
         herdId: fields.targetKind === 'herd' ? fields.targetId : undefined,
         bovineId: fields.targetKind === 'bovine' ? fields.targetId : undefined,
         notes: fields.notes.trim() || undefined,
-        active: true,
-        createdAt: now,
-        updatedAt: now,
       }
-      addEvent(event)
-      toast.success('Evento sanitário agendado')
+      if (isEdit && id) {
+        updateEvent(id, { ...common, updatedAt: now })
+        toast.success('Evento sanitário atualizado')
+      } else {
+        addEvent({
+          id: crypto.randomUUID(),
+          propertyId: farm?.id ?? '',
+          ...common,
+          status: 'pendente',
+          active: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+        toast.success('Evento sanitário agendado')
+      }
       setSaving(false)
       navigate(-1)
     }, 600)
@@ -95,9 +110,9 @@ export default function SanitaryEventRegister() {
 
   return (
     <FormScreen
-      title="Novo evento sanitário"
+      title={isEdit ? 'Editar evento sanitário' : 'Novo evento sanitário'}
       subtitle="Agende uma ação no calendário sanitário"
-      submitLabel="Agendar evento"
+      submitLabel={isEdit ? 'Atualizar' : 'Agendar evento'}
       onSubmit={handleSave}
       saving={saving}
       errorCount={submitAttempted ? errorCount : 0}

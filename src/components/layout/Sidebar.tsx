@@ -26,6 +26,7 @@ import {
   Receipt,
   Package,
   Tag,
+  History,
   BarChart2,
   Settings,
   HelpCircle,
@@ -57,38 +58,50 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Cadastros',
     items: [
-      { to: '/properties/new', label: 'Propriedade', icon: <MapPinned size={18} /> },
-      { to: '/bovines/new', label: 'Bovinos', icon: <Beef size={18} /> },
-      { to: '/divisions/new', label: 'Divisões', icon: <Layers size={18} /> },
-      { to: '/herds/new', label: 'Rebanhos', icon: <Users size={18} /> },
-      { to: '/troughs/new', label: 'Cochos', icon: <Droplets size={18} /> },
-      { to: '/forages/new', label: 'Forragem', icon: <Sprout size={18} /> },
-      { to: '/seasons/new', label: 'Temporadas', icon: <CalendarRange size={18} /> },
+      { to: '/properties', label: 'Propriedades', icon: <MapPinned size={18} />, end: true },
+      { to: '/bovines', label: 'Bovinos', icon: <Beef size={18} />, end: true },
+      { to: '/divisions', label: 'Divisões', icon: <Layers size={18} />, end: true },
+      { to: '/herds', label: 'Rebanhos', icon: <Users size={18} />, end: true },
+      { to: '/troughs', label: 'Cochos', icon: <Droplets size={18} />, end: true },
+      { to: '/forages', label: 'Forragem', icon: <Sprout size={18} />, end: true },
+      { to: '/seasons', label: 'Temporadas', icon: <CalendarRange size={18} />, end: true },
     ],
   },
   {
     title: 'Insumos',
     items: [
-      { to: '/medications/new', label: 'Medicamentos', icon: <Pill size={18} /> },
-      { to: '/feeds/new', label: 'Alimentos', icon: <Wheat size={18} /> },
-      { to: '/medication-stock/new', label: 'Estoque medicamento', icon: <PackagePlus size={18} /> },
-      { to: '/feed-stock/new', label: 'Estoque alimento', icon: <PackagePlus size={18} /> },
+      { to: '/medications', label: 'Medicamentos', icon: <Pill size={18} />, end: true },
+      { to: '/feeds', label: 'Alimentos', icon: <Wheat size={18} />, end: true },
+      { to: '/medication-stock', label: 'Estoque medicamento', icon: <PackagePlus size={18} />, end: true },
+      { to: '/feed-stock', label: 'Estoque alimento', icon: <PackagePlus size={18} />, end: true },
     ],
   },
   {
     title: 'Sanidade & Agenda',
     items: [
-      { to: '/sanitary-events/new', label: 'Eventos sanitários', icon: <Stethoscope size={18} /> },
-      { to: '/tasks/new', label: 'Tarefas', icon: <ListTodo size={18} /> },
+      { to: '/sanitary-events', label: 'Calendário sanitário', icon: <Stethoscope size={18} />, end: true },
+      { to: '/tasks', label: 'Tarefas', icon: <ListTodo size={18} />, end: true },
+    ],
+  },
+  {
+    title: 'Históricos',
+    items: [
+      { to: '/history/weighings', label: 'Pesagens', icon: <History size={18} /> },
+      { to: '/history/applications', label: 'Aplicações', icon: <History size={18} /> },
+      { to: '/history/refills', label: 'Abastecimentos', icon: <History size={18} /> },
+      { to: '/history/allocations', label: 'Lotações', icon: <History size={18} /> },
+      { to: '/history/memberships', label: 'Pertencimentos', icon: <History size={18} /> },
+      { to: '/history/passages', label: 'Passagens (GMD)', icon: <History size={18} /> },
+      { to: '/history/transfers', label: 'Transferências', icon: <History size={18} /> },
     ],
   },
   {
     title: 'Financeiro',
     items: [
-      { to: '/expenses/new', label: 'Despesas', icon: <Receipt size={18} /> },
-      { to: '/expense-categories/new', label: 'Categorias de despesa', icon: <DollarSign size={18} /> },
-      { to: '/sale-lots/new', label: 'Lotes comerciais', icon: <Package size={18} /> },
-      { to: '/sales/new', label: 'Vendas', icon: <Tag size={18} /> },
+      { to: '/expenses', label: 'Despesas', icon: <Receipt size={18} />, end: true },
+      { to: '/expense-categories', label: 'Categorias de despesa', icon: <DollarSign size={18} />, end: true },
+      { to: '/sale-lots', label: 'Lotes comerciais', icon: <Package size={18} />, end: true },
+      { to: '/sales', label: 'Vendas', icon: <Tag size={18} />, end: true },
     ],
   },
   {
@@ -216,6 +229,21 @@ export default function Sidebar() {
           >
             <UserCog size={18} aria-hidden="true" />
             Acesso e usuários
+          </NavLink>
+
+          <NavLink
+            to="/users-invites"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium transition-colors',
+                isActive
+                  ? 'bg-primary-bg text-primary'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+              )
+            }
+          >
+            <Users size={18} aria-hidden="true" />
+            Usuários e convites
           </NavLink>
 
           <NavLink

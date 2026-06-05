@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useAccess } from '@/hooks/useAccess'
@@ -8,7 +8,7 @@ import FormScreen, { FormSection } from '@/components/form/FormScreen.tsx'
 import Input from '@/components/ui/Input.tsx'
 import Select from '@/components/ui/Select.tsx'
 import type { SelectOption } from '@/components/ui/Select.tsx'
-import type { ExpenseCategory, ExpenseGroup } from '@/types/domain'
+import type { ExpenseGroup } from '@/types/domain'
 
 interface Fields {
   name: string
@@ -27,22 +27,29 @@ const GROUP_OPTIONS: SelectOption[] = [
 
 export default function ExpenseCategoryRegister() {
   const navigate   = useNavigate()
+  const { id }     = useParams<{ id: string }>()
+  const isEdit     = Boolean(id)
   const farm       = useFarmStore((s) => s.farm)
   const categories = useFarmStore((s) => s.expenseCategories)
+  const existing   = useFarmStore((s) => s.expenseCategories.find((c) => c.id === id))
   const addCategory = useFarmStore((s) => s.addExpenseCategory)
+  const updateCategory = useFarmStore((s) => s.updateExpenseCategory)
   const toast      = useToast()
   const { can }    = useAccess()
 
   const [saving, setSaving] = useState(false)
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({})
   const [submitAttempted, setSubmitAttempted] = useState(false)
-  const [fields, setFields] = useState<Fields>({ name: '', group: '' })
+  const [fields, setFields] = useState<Fields>({
+    name: existing?.name ?? '',
+    group: existing?.group ?? '',
+  })
 
   function validate(f: Fields): Partial<Record<FieldKey, string>> {
     const e: Partial<Record<FieldKey, string>> = {}
     if (!f.name.trim()) e.name = 'Nome é obrigatório'
     else if (categories.some(
-      (c) => c.propertyId === farm?.id && c.name.toLowerCase() === f.name.trim().toLowerCase(),
+      (c) => c.id !== id && c.propertyId === farm?.id && c.name.toLowerCase() === f.name.trim().toLowerCase(),
     )) e.name = 'Já existe uma categoria com este nome'
     if (!f.group) e.group = 'Grupo é obrigatório'
     return e
@@ -61,17 +68,21 @@ export default function ExpenseCategoryRegister() {
     setSaving(true)
     setTimeout(() => {
       const now = new Date().toISOString()
-      const category: ExpenseCategory = {
-        id: crypto.randomUUID(),
-        propertyId: farm?.id ?? '',
-        name: fields.name.trim(),
-        group: fields.group as ExpenseGroup,
-        active: true,
-        createdAt: now,
-        updatedAt: now,
+      const common = { name: fields.name.trim(), group: fields.group as ExpenseGroup }
+      if (isEdit && id) {
+        updateCategory(id, { ...common, updatedAt: now })
+        toast.success('Categoria atualizada')
+      } else {
+        addCategory({
+          id: crypto.randomUUID(),
+          propertyId: farm?.id ?? '',
+          ...common,
+          active: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+        toast.success('Categoria de despesa cadastrada')
       }
-      addCategory(category)
-      toast.success('Categoria de despesa cadastrada')
       setSaving(false)
       navigate(-1)
     }, 600)
@@ -79,9 +90,9 @@ export default function ExpenseCategoryRegister() {
 
   return (
     <FormScreen
-      title="Nova categoria de despesa"
+      title={isEdit ? 'Editar categoria' : 'Nova categoria de despesa'}
       subtitle="Classifica despesas e alimenta os relatórios"
-      submitLabel="Cadastrar categoria"
+      submitLabel={isEdit ? 'Atualizar' : 'Cadastrar categoria'}
       onSubmit={handleSave}
       saving={saving}
       errorCount={submitAttempted ? errorCount : 0}

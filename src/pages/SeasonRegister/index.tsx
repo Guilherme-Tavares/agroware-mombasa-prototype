@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useAccess } from '@/hooks/useAccess'
@@ -8,7 +8,7 @@ import FormScreen, { FormSection } from '@/components/form/FormScreen.tsx'
 import Input from '@/components/ui/Input.tsx'
 import Select from '@/components/ui/Select.tsx'
 import type { SelectOption } from '@/components/ui/Select.tsx'
-import type { Season, SeasonType } from '@/types/domain'
+import type { SeasonType } from '@/types/domain'
 
 interface Fields {
   name: string
@@ -39,8 +39,12 @@ const TYPE_OPTIONS: SelectOption[] = [
 
 export default function SeasonRegister() {
   const navigate  = useNavigate()
+  const { id }    = useParams<{ id: string }>()
+  const isEdit    = Boolean(id)
   const farm      = useFarmStore((s) => s.farm)
+  const existing  = useFarmStore((s) => s.seasons.find((x) => x.id === id))
   const addSeason = useFarmStore((s) => s.addSeason)
+  const updateSeason = useFarmStore((s) => s.updateSeason)
   const toast     = useToast()
   const { can }   = useAccess()
 
@@ -49,7 +53,10 @@ export default function SeasonRegister() {
   const [submitAttempted, setSubmitAttempted] = useState(false)
 
   const [fields, setFields] = useState<Fields>({
-    name: '', type: '', startDate: '', endDate: '',
+    name: existing?.name ?? '',
+    type: existing?.type ?? '',
+    startDate: existing?.startDate ?? '',
+    endDate: existing?.endDate ?? '',
   })
 
   const errors = validate(fields)
@@ -71,19 +78,26 @@ export default function SeasonRegister() {
     setSaving(true)
     setTimeout(() => {
       const now = new Date().toISOString()
-      const season: Season = {
-        id: crypto.randomUUID(),
-        propertyId: farm?.id,
+      const common = {
         name: fields.name.trim(),
         type: fields.type as SeasonType,
         startDate: fields.startDate,
         endDate: fields.endDate,
-        active: true,
-        createdAt: now,
-        updatedAt: now,
       }
-      addSeason(season)
-      toast.success('Temporada cadastrada com sucesso')
+      if (isEdit && id) {
+        updateSeason(id, { ...common, updatedAt: now })
+        toast.success('Temporada atualizada com sucesso')
+      } else {
+        addSeason({
+          id: crypto.randomUUID(),
+          propertyId: farm?.id,
+          ...common,
+          active: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+        toast.success('Temporada cadastrada com sucesso')
+      }
       setSaving(false)
       navigate(-1)
     }, 600)
@@ -91,9 +105,9 @@ export default function SeasonRegister() {
 
   return (
     <FormScreen
-      title="Nova temporada"
-      subtitle="Cadastre uma temporada (águas, seca ou transição)"
-      submitLabel="Cadastrar temporada"
+      title={isEdit ? 'Editar temporada' : 'Nova temporada'}
+      subtitle={isEdit ? 'Atualize os dados da temporada' : 'Cadastre uma temporada (águas, seca ou transição)'}
+      submitLabel={isEdit ? 'Atualizar' : 'Cadastrar temporada'}
       onSubmit={handleSave}
       saving={saving}
       errorCount={submitAttempted ? errorCount : 0}

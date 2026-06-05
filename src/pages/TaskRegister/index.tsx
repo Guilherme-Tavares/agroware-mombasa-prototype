@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useAccess } from '@/hooks/useAccess'
@@ -9,7 +9,6 @@ import Input from '@/components/ui/Input.tsx'
 import Select from '@/components/ui/Select.tsx'
 import Textarea from '@/components/ui/Textarea.tsx'
 import type { SelectOption } from '@/components/ui/Select.tsx'
-import type { Task } from '@/types/domain'
 
 interface Fields {
   title: string
@@ -23,10 +22,14 @@ type FieldKey = keyof Fields
 
 export default function TaskRegister() {
   const navigate  = useNavigate()
+  const { id }    = useParams<{ id: string }>()
+  const isEdit    = Boolean(id)
   const farm      = useFarmStore((s) => s.farm)
   const divisions = useFarmStore((s) => s.divisions)
   const herds     = useFarmStore((s) => s.herds)
+  const existing  = useFarmStore((s) => s.tasks.find((t) => t.id === id))
   const addTask   = useFarmStore((s) => s.addTask)
+  const updateTask = useFarmStore((s) => s.updateTask)
   const toast     = useToast()
   const { can }   = useAccess()
 
@@ -34,7 +37,11 @@ export default function TaskRegister() {
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({})
   const [submitAttempted, setSubmitAttempted] = useState(false)
   const [fields, setFields] = useState<Fields>({
-    title: '', description: '', dueDate: '', divisionId: '', herdId: '',
+    title: existing?.title ?? '',
+    description: existing?.description ?? '',
+    dueDate: existing?.dueDate ?? '',
+    divisionId: existing?.divisionId ?? '',
+    herdId: existing?.herdId ?? '',
   })
 
   function validate(f: Fields): Partial<Record<FieldKey, string>> {
@@ -65,21 +72,28 @@ export default function TaskRegister() {
     setSaving(true)
     setTimeout(() => {
       const now = new Date().toISOString()
-      const task: Task = {
-        id: crypto.randomUUID(),
-        propertyId: farm?.id ?? '',
+      const common = {
         title: fields.title.trim(),
         description: fields.description.trim() || undefined,
         dueDate: fields.dueDate || undefined,
         divisionId: fields.divisionId || undefined,
         herdId: fields.herdId || undefined,
-        status: 'pendente',
-        active: true,
-        createdAt: now,
-        updatedAt: now,
       }
-      addTask(task)
-      toast.success('Tarefa criada com sucesso')
+      if (isEdit && id) {
+        updateTask(id, { ...common, updatedAt: now })
+        toast.success('Tarefa atualizada')
+      } else {
+        addTask({
+          id: crypto.randomUUID(),
+          propertyId: farm?.id ?? '',
+          ...common,
+          status: 'pendente',
+          active: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+        toast.success('Tarefa criada com sucesso')
+      }
       setSaving(false)
       navigate(-1)
     }, 600)
@@ -87,9 +101,9 @@ export default function TaskRegister() {
 
   return (
     <FormScreen
-      title="Nova tarefa"
+      title={isEdit ? 'Editar tarefa' : 'Nova tarefa'}
       subtitle="Adicione um item à agenda da propriedade"
-      submitLabel="Criar tarefa"
+      submitLabel={isEdit ? 'Atualizar' : 'Criar tarefa'}
       onSubmit={handleSave}
       saving={saving}
       errorCount={submitAttempted ? errorCount : 0}

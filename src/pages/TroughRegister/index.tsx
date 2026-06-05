@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useAccess } from '@/hooks/useAccess'
@@ -9,7 +9,7 @@ import FormScreen, { FormSection } from '@/components/form/FormScreen.tsx'
 import Input from '@/components/ui/Input.tsx'
 import Select from '@/components/ui/Select.tsx'
 import type { SelectOption } from '@/components/ui/Select.tsx'
-import type { FeedTrough, TroughMaterial } from '@/types/domain'
+import type { TroughMaterial } from '@/types/domain'
 
 interface Fields {
   divisionId: string
@@ -32,9 +32,13 @@ const MATERIAL_OPTIONS: SelectOption[] = [
 
 export default function TroughRegister() {
   const navigate  = useNavigate()
+  const { id }    = useParams<{ id: string }>()
+  const isEdit    = Boolean(id)
   const divisions = useFarmStore((s) => s.divisions)
   const feeds     = useFarmStore((s) => s.feeds)
+  const existing  = useFarmStore((s) => s.feedTroughs.find((t) => t.id === id))
   const addFeedTrough = useFarmStore((s) => s.addFeedTrough)
+  const updateFeedTrough = useFarmStore((s) => s.updateFeedTrough)
   const toast     = useToast()
   const { can }   = useAccess()
 
@@ -44,8 +48,13 @@ export default function TroughRegister() {
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({})
   const [submitAttempted, setSubmitAttempted] = useState(false)
   const [fields, setFields] = useState<Fields>({
-    divisionId: '', identifier: '', material: 'concreto',
-    capacity: '', consumptionRate: '', currentAmount: '0', currentFeedId: '',
+    divisionId: existing?.divisionId ?? '',
+    identifier: existing?.identifier ?? '',
+    material: existing?.material ?? 'concreto',
+    capacity: existing?.capacity != null ? String(existing.capacity) : '',
+    consumptionRate: existing?.consumptionRate != null ? String(existing.consumptionRate) : '',
+    currentAmount: existing?.currentAmount != null ? String(existing.currentAmount) : '0',
+    currentFeedId: existing?.currentFeedId ?? '',
   })
 
   function validate(f: Fields): Partial<Record<FieldKey, string>> {
@@ -81,34 +90,41 @@ export default function TroughRegister() {
     setTimeout(() => {
       const now = new Date().toISOString()
       const division = divisions.find((d) => d.id === fields.divisionId)
-      // Posiciona o cocho no centroide da divisão (relativo e, se houver, geo).
-      const position = division && division.polygon.length >= 3
-        ? polygonCentroid(division.polygon)
-        : { x: 500, y: 350 }
-      const geoPosition = division?.geoPolygon && division.geoPolygon.length >= 3
-        ? geoCentroid(division.geoPolygon)
-        : undefined
       const currentAmount = fields.currentAmount ? Number(fields.currentAmount) : 0
-
-      const trough: FeedTrough = {
-        id: crypto.randomUUID(),
+      const common = {
         divisionId: fields.divisionId,
         identifier: fields.identifier.trim(),
         capacity: Number(fields.capacity),
         material: fields.material as TroughMaterial,
-        position,
-        geoPosition,
         currentAmount,
         currentFeedId: fields.currentFeedId || undefined,
         consumptionRate: fields.consumptionRate ? Number(fields.consumptionRate) : 0,
-        lastRefillDate: currentAmount > 0 ? today : '',
-        refillHistory: [],
-        active: true,
-        createdAt: now,
-        updatedAt: now,
       }
-      addFeedTrough(trough)
-      toast.success('Cocho cadastrado com sucesso')
+
+      if (isEdit && id) {
+        updateFeedTrough(id, { ...common, updatedAt: now })
+        toast.success('Cocho atualizado com sucesso')
+      } else {
+        // Posiciona o cocho no centroide da divisão (relativo e, se houver, geo).
+        const position = division && division.polygon.length >= 3
+          ? polygonCentroid(division.polygon)
+          : { x: 500, y: 350 }
+        const geoPosition = division?.geoPolygon && division.geoPolygon.length >= 3
+          ? geoCentroid(division.geoPolygon)
+          : undefined
+        addFeedTrough({
+          id: crypto.randomUUID(),
+          ...common,
+          position,
+          geoPosition,
+          lastRefillDate: currentAmount > 0 ? today : '',
+          refillHistory: [],
+          active: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+        toast.success('Cocho cadastrado com sucesso')
+      }
       setSaving(false)
       navigate(-1)
     }, 600)
@@ -116,9 +132,9 @@ export default function TroughRegister() {
 
   return (
     <FormScreen
-      title="Novo cocho"
-      subtitle="Cadastre um cocho em uma divisão"
-      submitLabel="Cadastrar cocho"
+      title={isEdit ? 'Editar cocho' : 'Novo cocho'}
+      subtitle={isEdit ? 'Atualize os dados do cocho' : 'Cadastre um cocho em uma divisão'}
+      submitLabel={isEdit ? 'Atualizar' : 'Cadastrar cocho'}
       onSubmit={handleSave}
       saving={saving}
       errorCount={submitAttempted ? errorCount : 0}

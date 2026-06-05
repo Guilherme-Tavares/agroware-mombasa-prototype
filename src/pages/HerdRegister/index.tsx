@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useAccess } from '@/hooks/useAccess'
@@ -9,7 +9,7 @@ import Input from '@/components/ui/Input.tsx'
 import Select from '@/components/ui/Select.tsx'
 import Textarea from '@/components/ui/Textarea.tsx'
 import type { SelectOption } from '@/components/ui/Select.tsx'
-import type { Herd, HerdPurpose } from '@/types/domain'
+import type { HerdPurpose } from '@/types/domain'
 
 interface Fields {
   name: string
@@ -36,8 +36,12 @@ const PURPOSE_OPTIONS: SelectOption[] = [
 
 export default function HerdRegister() {
   const navigate = useNavigate()
+  const { id }   = useParams<{ id: string }>()
+  const isEdit   = Boolean(id)
   const farm     = useFarmStore((s) => s.farm)
+  const existing = useFarmStore((s) => s.herds.find((h) => h.id === id))
   const addHerd  = useFarmStore((s) => s.addHerd)
+  const updateHerd = useFarmStore((s) => s.updateHerd)
   const toast    = useToast()
   const { can }  = useAccess()
 
@@ -48,7 +52,10 @@ export default function HerdRegister() {
   const [submitAttempted, setSubmitAttempted] = useState(false)
 
   const [fields, setFields] = useState<Fields>({
-    name: '', purpose: '', formedAt: today, notes: '',
+    name: existing?.name ?? '',
+    purpose: existing?.purpose ?? '',
+    formedAt: existing?.formedAt ?? today,
+    notes: existing?.notes ?? '',
   })
 
   const errors = validate(fields)
@@ -70,19 +77,26 @@ export default function HerdRegister() {
     setSaving(true)
     setTimeout(() => {
       const now = new Date().toISOString()
-      const herd: Herd = {
-        id: crypto.randomUUID(),
-        farmId: farm?.id ?? '',
+      const common = {
         name: fields.name.trim(),
         purpose: fields.purpose as HerdPurpose,
         formedAt: fields.formedAt,
         notes: fields.notes.trim() || undefined,
-        active: true,
-        createdAt: now,
-        updatedAt: now,
       }
-      addHerd(herd)
-      toast.success('Rebanho cadastrado com sucesso')
+      if (isEdit && id) {
+        updateHerd(id, { ...common, updatedAt: now })
+        toast.success('Rebanho atualizado com sucesso')
+      } else {
+        addHerd({
+          id: crypto.randomUUID(),
+          farmId: farm?.id ?? '',
+          ...common,
+          active: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+        toast.success('Rebanho cadastrado com sucesso')
+      }
       setSaving(false)
       navigate(-1)
     }, 600)
@@ -90,9 +104,9 @@ export default function HerdRegister() {
 
   return (
     <FormScreen
-      title="Novo rebanho"
-      subtitle="Crie um lote para agrupar bovinos"
-      submitLabel="Cadastrar rebanho"
+      title={isEdit ? 'Editar rebanho' : 'Novo rebanho'}
+      subtitle={isEdit ? 'Atualize os dados do lote' : 'Crie um lote para agrupar bovinos'}
+      submitLabel={isEdit ? 'Atualizar' : 'Cadastrar rebanho'}
       onSubmit={handleSave}
       saving={saving}
       errorCount={submitAttempted ? errorCount : 0}
