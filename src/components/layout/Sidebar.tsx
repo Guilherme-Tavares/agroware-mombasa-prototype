@@ -5,6 +5,15 @@ import {
   Beef,
   Layers,
   Users,
+  CalendarRange,
+  Droplets,
+  Pill,
+  Wheat,
+  Sprout,
+  MapPinned,
+  Stethoscope,
+  ListTodo,
+  DollarSign,
   ArrowLeftRight,
   BarChart2,
   Settings,
@@ -37,9 +46,33 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Cadastros',
     items: [
+      { to: '/properties/new', label: 'Propriedade', icon: <MapPinned size={18} /> },
       { to: '/bovines/new', label: 'Bovinos', icon: <Beef size={18} /> },
       { to: '/divisions/new', label: 'Divisões', icon: <Layers size={18} /> },
       { to: '/herds/new', label: 'Rebanhos', icon: <Users size={18} /> },
+      { to: '/troughs/new', label: 'Cochos', icon: <Droplets size={18} /> },
+      { to: '/forages/new', label: 'Forragem', icon: <Sprout size={18} /> },
+      { to: '/seasons/new', label: 'Temporadas', icon: <CalendarRange size={18} /> },
+    ],
+  },
+  {
+    title: 'Insumos',
+    items: [
+      { to: '/medications/new', label: 'Medicamentos', icon: <Pill size={18} /> },
+      { to: '/feeds/new', label: 'Alimentos', icon: <Wheat size={18} /> },
+    ],
+  },
+  {
+    title: 'Sanidade & Agenda',
+    items: [
+      { to: '/sanitary-events/new', label: 'Eventos sanitários', icon: <Stethoscope size={18} /> },
+      { to: '/tasks/new', label: 'Tarefas', icon: <ListTodo size={18} /> },
+    ],
+  },
+  {
+    title: 'Financeiro',
+    items: [
+      { to: '/expense-categories/new', label: 'Categorias de despesa', icon: <DollarSign size={18} /> },
     ],
   },
   {

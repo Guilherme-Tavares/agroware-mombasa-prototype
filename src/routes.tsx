@@ -7,6 +7,15 @@ import Demarcation from '@/pages/Demarcation/index.tsx'
 import BovineRegister from '@/pages/BovineRegister/index.tsx'
 import DivisionRegister from '@/pages/DivisionRegister/index.tsx'
 import HerdRegister from '@/pages/HerdRegister/index.tsx'
+import SeasonRegister from '@/pages/SeasonRegister/index.tsx'
+import TroughRegister from '@/pages/TroughRegister/index.tsx'
+import MedicationRegister from '@/pages/MedicationRegister/index.tsx'
+import FeedRegister from '@/pages/FeedRegister/index.tsx'
+import ExpenseCategoryRegister from '@/pages/ExpenseCategoryRegister/index.tsx'
+import SanitaryEventRegister from '@/pages/SanitaryEventRegister/index.tsx'
+import TaskRegister from '@/pages/TaskRegister/index.tsx'
+import PropertyRegister from '@/pages/PropertyRegister/index.tsx'
+import ForageRegister from '@/pages/ForageRegister/index.tsx'
 import HerdAllocation from '@/pages/HerdAllocation/index.tsx'
 import MapBaseConfig from '@/pages/MapBaseConfig/index.tsx'
 import Profile from '@/pages/Profile/index.tsx'
@@ -38,8 +47,17 @@ export const router = createBrowserRouter([
           { path: 'demarcation', element: <Demarcation /> },
           { path: 'bovines/new', element: <BovineRegister /> },
           { path: 'bovines/:id/edit', element: <BovineRegister /> },
+          { path: 'properties/new', element: <PropertyRegister /> },
           { path: 'divisions/new', element: <DivisionRegister /> },
+          { path: 'forages/new', element: <ForageRegister /> },
           { path: 'herds/new', element: <HerdRegister /> },
+          { path: 'seasons/new', element: <SeasonRegister /> },
+          { path: 'troughs/new', element: <TroughRegister /> },
+          { path: 'medications/new', element: <MedicationRegister /> },
+          { path: 'feeds/new', element: <FeedRegister /> },
+          { path: 'expense-categories/new', element: <ExpenseCategoryRegister /> },
+          { path: 'sanitary-events/new', element: <SanitaryEventRegister /> },
+          { path: 'tasks/new', element: <TaskRegister /> },
           { path: 'operations/allocation', element: <HerdAllocation /> },
           { path: 'profile', element: <Profile /> },
           { path: 'settings', element: <Settings /> },

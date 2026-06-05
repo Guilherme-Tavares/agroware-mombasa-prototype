@@ -116,8 +116,18 @@ interface FarmState {
   deallocateHerd: (herdId: string) => void
   refillFeedTrough: (troughId: string, refill: Refill, newAmount: number) => void
   updateDivision: (id: string, updates: Partial<Division>) => void
+  addProperty: (farm: Farm) => void
   addHerd: (herd: Herd) => void
   addDivision: (division: Division) => void
+  addForagePlanting: (planting: ForagePlanting) => void
+  addSeason: (season: Season) => void
+  // Cadastros — catálogos e agenda (RF18–RF23)
+  addFeedTrough: (trough: FeedTrough) => void
+  addMedication: (medication: Medication) => void
+  addFeed: (feed: Feed) => void
+  addExpenseCategory: (category: ExpenseCategory) => void
+  addSanitaryEvent: (event: SanitaryEvent) => void
+  addTask: (task: Task) => void
 }
 
 const emptyState = {
@@ -391,11 +401,75 @@ export const useFarmStore = create<FarmState>()(
           ),
         })),
 
+      // Criar uma propriedade dá ao criador o vínculo de dono e nível produtor
+      // (escopo §6.1); a nova propriedade passa a ser a ativa.
+      addProperty: (farm) =>
+        set((state) => {
+          const userProperties = state.currentUserId
+            ? [
+                ...state.userProperties,
+                {
+                  id: crypto.randomUUID(),
+                  userId: state.currentUserId,
+                  propertyId: farm.id,
+                  accessLevel: 'produtor' as const,
+                  active: true,
+                },
+              ]
+            : state.userProperties
+          return {
+            farms: [...state.farms, farm],
+            userProperties,
+            farm,
+            activePropertyId: farm.id,
+          }
+        }),
+
       addHerd: (herd) =>
         set((state) => ({ herds: [...state.herds, herd] })),
 
       addDivision: (division) =>
         set((state) => ({ divisions: [...state.divisions, division] })),
+
+      // Uma forragem ativa por divisão: desativa as anteriores e atualiza os
+      // campos de conveniência da divisão (usados pelo mapa ilustrado).
+      addForagePlanting: (planting) =>
+        set((state) => ({
+          foragePlantings: [
+            ...state.foragePlantings.map((p) =>
+              p.divisionId === planting.divisionId && p.active !== false
+                ? { ...p, active: false }
+                : p,
+            ),
+            planting,
+          ],
+          divisions: state.divisions.map((d) =>
+            d.id === planting.divisionId
+              ? { ...d, forageId: planting.speciesId ?? d.forageId, forageStartDate: planting.plantingDate ?? d.forageStartDate }
+              : d,
+          ),
+        })),
+
+      addSeason: (season) =>
+        set((state) => ({ seasons: [...state.seasons, season] })),
+
+      addFeedTrough: (trough) =>
+        set((state) => ({ feedTroughs: [...state.feedTroughs, trough] })),
+
+      addMedication: (medication) =>
+        set((state) => ({ medications: [...state.medications, medication] })),
+
+      addFeed: (feed) =>
+        set((state) => ({ feeds: [...state.feeds, feed] })),
+
+      addExpenseCategory: (category) =>
+        set((state) => ({ expenseCategories: [...state.expenseCategories, category] })),
+
+      addSanitaryEvent: (event) =>
+        set((state) => ({ sanitaryEvents: [...state.sanitaryEvents, event] })),
+
+      addTask: (task) =>
+        set((state) => ({ tasks: [...state.tasks, task] })),
     }),
     {
       name: 'agroware:farm',
