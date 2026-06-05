@@ -2,7 +2,7 @@ import { useState, useRef, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  ChevronLeft, Undo2, Check, Info, Ruler, MapPin,
+  ChevronLeft, Undo2, Check, Info, Ruler, MapPin, Palette, Satellite,
 } from 'lucide-react'
 
 import { useFarmStore } from '@/store/useFarmStore'
@@ -14,6 +14,9 @@ import { formatArea } from '@/utils/format'
 import Button from '@/components/ui/Button.tsx'
 import Modal from '@/components/ui/Modal.tsx'
 import Input from '@/components/ui/Input.tsx'
+import GeoDemarcation from '@/components/map/GeoDemarcation.tsx'
+
+type DemarcationMode = 'ilustrada' | 'real'
 
 // ─── Canvas dimensions ────────────────────────────────────────────────────────
 
@@ -78,7 +81,7 @@ function StepBadge({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function Demarcation() {
+function IllustratedDemarcation() {
   const navigate   = useNavigate()
   const farm       = useFarmStore((s) => s.farm)
   const updateFarm = useFarmStore((s) => s.updateFarm)
@@ -92,7 +95,7 @@ export default function Demarcation() {
 
   // ── Modal state ──
   const [showModal, setShowModal]   = useState(false)
-  const [farmName, setFarmName]     = useState(farm?.name ?? 'Fazenda São José')
+  const [farmName, setFarmName]     = useState(farm?.name ?? 'Sítio Santa Fé')
   const [city, setCity]             = useState(farm?.city ?? '')
   const [uf, setUf]                 = useState(farm?.state ?? '')
   const [saving, setSaving]         = useState(false)
@@ -178,7 +181,7 @@ export default function Demarcation() {
         polygon:   points,
         totalArea: parseFloat(areaHa.toFixed(1)),
         perimeter: parseFloat(perimeterM.toFixed(0)),
-        name:      farmName.trim() || 'Fazenda São José',
+        name:      farmName.trim() || 'Sítio Santa Fé',
         city:      city.trim(),
         state:     uf.trim().toUpperCase(),
       })
@@ -192,28 +195,6 @@ export default function Demarcation() {
 
   return (
     <div className="flex flex-col gap-4">
-
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25 }}
-        className="flex items-center gap-3"
-      >
-        <button
-          onClick={() => navigate(-1)}
-          className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
-          aria-label="Voltar"
-        >
-          <ChevronLeft size={20} />
-        </button>
-        <div className="min-w-0">
-          <h1 className="text-h1 text-gray-900">Demarcar Propriedade</h1>
-          <p className="text-caption text-gray-400 mt-0.5">
-            Desenhe o perímetro clicando nos cantos
-          </p>
-        </div>
-      </motion.div>
 
       {/* ── Instruction card ───────────────────────────────────────────── */}
       <motion.div
@@ -624,6 +605,71 @@ export default function Demarcation() {
           </div>
         </div>
       </Modal>
+    </div>
+  )
+}
+
+// ─── Wrapper: alterna entre demarcação ilustrada (fallback) e sobre o mapa real ─
+
+export default function Demarcation() {
+  const navigate = useNavigate()
+  const [mode, setMode] = useState<DemarcationMode>('ilustrada')
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Header + toggle de modo */}
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25 }}
+        className="flex items-center gap-3"
+      >
+        <button
+          onClick={() => navigate(-1)}
+          className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
+          aria-label="Voltar"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-h1 text-gray-900">Demarcar Propriedade</h1>
+          <p className="text-caption text-gray-400 mt-0.5">
+            {mode === 'ilustrada'
+              ? 'Modo ilustrado — desenho relativo, offline'
+              : 'Sobre o mapa real — captura lat/lng georreferenciada'}
+          </p>
+        </div>
+        <div className="flex rounded-lg bg-gray-100 p-1 gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMode('ilustrada')}
+            aria-pressed={mode === 'ilustrada'}
+            className={[
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-button transition-colors',
+              mode === 'ilustrada' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700',
+            ].join(' ')}
+          >
+            <Palette size={14} />
+            <span className="hidden sm:inline">Ilustrada</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('real')}
+            aria-pressed={mode === 'real'}
+            className={[
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-button transition-colors',
+              mode === 'real' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700',
+            ].join(' ')}
+          >
+            <Satellite size={14} />
+            <span className="hidden sm:inline">Mapa real</span>
+          </button>
+        </div>
+      </motion.div>
+
+      {mode === 'ilustrada'
+        ? <IllustratedDemarcation />
+        : <GeoDemarcation onCancel={() => navigate(-1)} />}
     </div>
   )
 }

@@ -1,4 +1,79 @@
-import type { Point } from '@/types/domain'
+import type { Point, GeoPoint } from '@/types/domain'
+
+// ─── Geometria geográfica (lat/lng) ──────────────────────────────────────────
+
+const EARTH_RADIUS_M = 6_378_137
+
+function toRad(deg: number): number {
+  return (deg * Math.PI) / 180
+}
+
+/**
+ * Área de um polígono geográfico, em hectares (aproximação esférica por
+ * excesso). Suficiente para a escala de uma propriedade.
+ */
+export function geoPolygonAreaHa(points: GeoPoint[]): number {
+  if (points.length < 3) return 0
+  let sum = 0
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i]
+    const b = points[(i + 1) % points.length]
+    sum += toRad(b.lng - a.lng) * (2 + Math.sin(toRad(a.lat)) + Math.sin(toRad(b.lat)))
+  }
+  const m2 = Math.abs((sum * EARTH_RADIUS_M * EARTH_RADIUS_M) / 2)
+  return m2 / 10_000
+}
+
+/** Perímetro de um polígono geográfico, em metros (soma de haversines). */
+export function geoPolygonPerimeterM(points: GeoPoint[]): number {
+  if (points.length < 2) return 0
+  let total = 0
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i]
+    const b = points[(i + 1) % points.length]
+    const dLat = toRad(b.lat - a.lat)
+    const dLng = toRad(b.lng - a.lng)
+    const h =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2
+    total += 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)))
+  }
+  return total
+}
+
+/** Centroide simples (média) de pontos geográficos. */
+export function geoCentroid(points: GeoPoint[]): GeoPoint {
+  const n = points.length || 1
+  return {
+    lat: points.reduce((s, p) => s + p.lat, 0) / n,
+    lng: points.reduce((s, p) => s + p.lng, 0) / n,
+  }
+}
+
+/**
+ * Projeta um polígono geográfico para coordenadas relativas no viewBox
+ * ilustrado, mapeando o bounding box do polígono em [pad, VW-pad] × [pad, VH-pad].
+ * Mantém a representação relativa (offline) coerente com a geográfica (online)
+ * após uma demarcação sobre o mapa real (RF37). Eixo Y invertido (norte em cima).
+ */
+export function geoToViewbox(
+  points: GeoPoint[],
+  vw = 1000,
+  vh = 700,
+  pad = 60,
+): Point[] {
+  if (points.length === 0) return []
+  const lats = points.map((p) => p.lat)
+  const lngs = points.map((p) => p.lng)
+  const latMin = Math.min(...lats), latMax = Math.max(...lats)
+  const lngMin = Math.min(...lngs), lngMax = Math.max(...lngs)
+  const spanLat = latMax - latMin || 1e-6
+  const spanLng = lngMax - lngMin || 1e-6
+  return points.map((p) => ({
+    x: Math.round(pad + ((p.lng - lngMin) / spanLng) * (vw - 2 * pad)),
+    y: Math.round(pad + ((latMax - p.lat) / spanLat) * (vh - 2 * pad)),
+  }))
+}
 
 /**
  * Shoelace formula — returns area in the same unit² as the input coordinates.

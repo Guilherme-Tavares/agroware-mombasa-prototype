@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, Beef, TrendingUp, AlertTriangle, Map as MapIcon } from 'lucide-react'
+import { MapPin, Beef, TrendingUp, AlertTriangle, Map as MapIcon, Download } from 'lucide-react'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useUIStore } from '@/store/useUIStore'
@@ -174,6 +174,19 @@ export default function MapPage() {
         <div className="absolute bottom-3 left-3 z-10">
           <LayerTogglePanel layers={layers} onToggle={toggleMapLayer} />
         </div>
+
+        {/* Offline map base shortcut — só no mapa real (RF36) */}
+        {!isIllustrated && (
+          <div className="absolute top-3 left-3 z-10">
+            <button
+              onClick={() => navigate('/map/offline')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white shadow-floating border border-gray-200 text-button text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <Download size={14} className="text-primary" />
+              <span className="hidden sm:inline">Mapa offline</span>
+            </button>
+          </div>
+        )}
 
         {/* Floating controls ─ bottom-right (camada base) */}
         <div className="absolute bottom-3 right-3 z-10">

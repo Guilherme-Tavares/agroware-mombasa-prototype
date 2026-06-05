@@ -8,6 +8,7 @@ import BovineRegister from '@/pages/BovineRegister/index.tsx'
 import DivisionRegister from '@/pages/DivisionRegister/index.tsx'
 import HerdRegister from '@/pages/HerdRegister/index.tsx'
 import HerdAllocation from '@/pages/HerdAllocation/index.tsx'
+import MapBaseConfig from '@/pages/MapBaseConfig/index.tsx'
 import FeedTroughDetail from '@/pages/FeedTroughDetail/index.tsx'
 import DevComponents from '@/pages/DevComponents/index.tsx'
 
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <Dashboard /> },
           { path: 'map', element: <MapPage /> },
+          { path: 'map/offline', element: <MapBaseConfig /> },
           { path: 'demarcation', element: <Demarcation /> },
           { path: 'bovines/new', element: <BovineRegister /> },
           { path: 'bovines/:id/edit', element: <BovineRegister /> },

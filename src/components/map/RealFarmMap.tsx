@@ -1,31 +1,20 @@
 import { useMemo, useEffect } from 'react'
 import {
-  MapContainer, TileLayer, Polygon, CircleMarker, Tooltip, useMap,
+  MapContainer, Polygon, CircleMarker, Tooltip, useMap,
 } from 'react-leaflet'
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { calculateHPPercentage, getHPStatus } from '@/utils/hp-system'
+import { TILE_SOURCES, type TileSourceId } from '@/lib/tiles'
+import OfflineTiles from './OfflineTiles.tsx'
 import type { GeoPoint } from '@/types/domain'
 import type { MapLayers, SelectedElement } from './StylizedFarmMap.tsx'
 
 // ─── Base layer ────────────────────────────────────────────────────────────
 
-export type RealBaseLayer = 'satelite' | 'mapa'
-
-const TILES: Record<RealBaseLayer, { url: string; attribution: string; maxZoom: number }> = {
-  satelite: {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics',
-    maxZoom: 19,
-  },
-  mapa: {
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxZoom: 19,
-  },
-}
+export type RealBaseLayer = TileSourceId
 
 // Status → cor (mesmo semáforo do resto do app).
 const HP_HEX: Record<'ok' | 'warning' | 'alert', string> = {
@@ -85,7 +74,7 @@ export default function RealFarmMap({
     return map
   }, [allocations])
 
-  const tiles = TILES[baseLayer]
+  const tiles = TILE_SOURCES[baseLayer]
   const center: LatLng = farm?.geoCenter ? toLatLng(farm.geoCenter) : [-10.9295, -61.9912]
   const farmGeo = farm?.geoPolygon ?? []
 
@@ -99,8 +88,9 @@ export default function RealFarmMap({
         className="w-full h-full"
         style={{ background: '#0b1f12' }}
       >
-        <TileLayer
+        <OfflineTiles
           key={baseLayer}
+          sourceId={baseLayer}
           url={tiles.url}
           attribution={tiles.attribution}
           maxZoom={tiles.maxZoom}
