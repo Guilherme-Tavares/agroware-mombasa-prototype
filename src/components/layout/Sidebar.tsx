@@ -11,6 +11,7 @@ import {
   HelpCircle,
   LogOut,
   UserCircle,
+  UserCog,
   X,
 } from 'lucide-react'
 import { useUIStore } from '@/store/useUIStore'
@@ -144,6 +145,21 @@ export default function Sidebar() {
           >
             <UserCircle size={18} aria-hidden="true" />
             Perfil
+          </NavLink>
+
+          <NavLink
+            to="/access"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium transition-colors',
+                isActive
+                  ? 'bg-primary-bg text-primary'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+              )
+            }
+          >
+            <UserCog size={18} aria-hidden="true" />
+            Acesso e usuários
           </NavLink>
 
           <NavLink

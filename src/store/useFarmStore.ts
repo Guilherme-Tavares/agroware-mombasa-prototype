@@ -5,6 +5,7 @@ import type {
   UserConfig,
   UserProperty,
   Invitation,
+  AccessLevel,
   Farm,
   Division,
   Forage,
@@ -98,8 +99,16 @@ interface FarmState {
   // ── Ações ──
   seedFromMock: (data: MockData) => void
   setActiveProperty: (propertyId: string) => void
+  setCurrentUser: (userId: string) => void
   updateCurrentUser: (updates: Partial<User>) => void
   updateUserConfig: (updates: Partial<UserConfig>) => void
+  // Multiusuário (RF08–RF11)
+  inviteUser: (invitation: Invitation) => void
+  cancelInvitation: (invitationId: string) => void
+  respondInvitation: (invitationId: string, accept: boolean) => void
+  updateAccessLevel: (userPropertyId: string, level: AccessLevel) => void
+  removeUserAccess: (userPropertyId: string) => void
+  transferOwnership: (propertyId: string, newOwnerId: string) => void
   updateFarm: (updates: Partial<Farm>) => void
   addBovine: (bovine: Bovine) => void
   updateBovine: (id: string, updates: Partial<Bovine>) => void
@@ -205,6 +214,12 @@ export const useFarmStore = create<FarmState>()(
           return next ? { activePropertyId: propertyId, farm: next } : state
         }),
 
+      setCurrentUser: (userId) =>
+        set((state) => {
+          const u = state.users.find((x) => x.id === userId)
+          return u ? { currentUserId: userId, user: u } : state
+        }),
+
       updateCurrentUser: (updates) =>
         set((state) => {
           if (!state.user) return state
@@ -213,6 +228,101 @@ export const useFarmStore = create<FarmState>()(
             user: updated,
             users: state.users.map((u) => (u.id === updated.id ? updated : u)),
           }
+        }),
+
+      // ── Multiusuário (RF08–RF11) ──
+
+      inviteUser: (invitation) =>
+        set((state) => ({ invitations: [...state.invitations, invitation] })),
+
+      cancelInvitation: (invitationId) =>
+        set((state) => ({
+          invitations: state.invitations.map((inv) =>
+            inv.id === invitationId ? { ...inv, status: 'cancelado' } : inv,
+          ),
+        })),
+
+      respondInvitation: (invitationId, accept) =>
+        set((state) => {
+          const inv = state.invitations.find((i) => i.id === invitationId)
+          if (!inv) return state
+
+          const invitations = state.invitations.map((i) =>
+            i.id === invitationId ? { ...i, status: accept ? ('aceito' as const) : ('recusado' as const) } : i,
+          )
+          if (!accept) return { invitations }
+
+          // Aceite: cria ou reativa o vínculo de acesso com o nível oferecido.
+          const existing = state.userProperties.find(
+            (up) => up.userId === inv.invitedUserId && up.propertyId === inv.propertyId,
+          )
+          const userProperties = existing
+            ? state.userProperties.map((up) =>
+                up.id === existing.id ? { ...up, active: true, accessLevel: inv.offeredLevel } : up,
+              )
+            : [
+                ...state.userProperties,
+                {
+                  id: crypto.randomUUID(),
+                  userId: inv.invitedUserId,
+                  propertyId: inv.propertyId,
+                  accessLevel: inv.offeredLevel,
+                  active: true,
+                },
+              ]
+          return { invitations, userProperties }
+        }),
+
+      updateAccessLevel: (userPropertyId, level) =>
+        set((state) => ({
+          userProperties: state.userProperties.map((up) =>
+            up.id === userPropertyId ? { ...up, accessLevel: level } : up,
+          ),
+        })),
+
+      removeUserAccess: (userPropertyId) =>
+        set((state) => {
+          const up = state.userProperties.find((x) => x.id === userPropertyId)
+          // O dono nunca pode ser removido (posse imutável).
+          if (!up) return state
+          const farm = state.farms.find((f) => f.id === up.propertyId)
+          if (farm?.ownerId === up.userId) return state
+          return {
+            userProperties: state.userProperties.map((x) =>
+              x.id === userPropertyId ? { ...x, active: false } : x,
+            ),
+          }
+        }),
+
+      transferOwnership: (propertyId, newOwnerId) =>
+        set((state) => {
+          // Apenas troca o dono; garante que o novo dono seja produtor.
+          const farms = state.farms.map((f) =>
+            f.id === propertyId ? { ...f, ownerId: newOwnerId } : f,
+          )
+          const hasLink = state.userProperties.some(
+            (up) => up.userId === newOwnerId && up.propertyId === propertyId,
+          )
+          const userProperties = hasLink
+            ? state.userProperties.map((up) =>
+                up.userId === newOwnerId && up.propertyId === propertyId
+                  ? { ...up, accessLevel: 'produtor' as const, active: true }
+                  : up,
+              )
+            : [
+                ...state.userProperties,
+                {
+                  id: crypto.randomUUID(),
+                  userId: newOwnerId,
+                  propertyId,
+                  accessLevel: 'produtor' as const,
+                  active: true,
+                },
+              ]
+          const farm = state.farm?.id === propertyId
+            ? farms.find((f) => f.id === propertyId) ?? state.farm
+            : state.farm
+          return { farms, userProperties, farm }
         }),
 
       updateUserConfig: (updates) =>
