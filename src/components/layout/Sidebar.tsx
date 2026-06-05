@@ -23,6 +23,9 @@ import {
   ClipboardCheck,
   Link2,
   Truck,
+  Receipt,
+  Package,
+  Tag,
   BarChart2,
   Settings,
   HelpCircle,
@@ -82,7 +85,10 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Financeiro',
     items: [
+      { to: '/expenses/new', label: 'Despesas', icon: <Receipt size={18} /> },
       { to: '/expense-categories/new', label: 'Categorias de despesa', icon: <DollarSign size={18} /> },
+      { to: '/sale-lots/new', label: 'Lotes comerciais', icon: <Package size={18} /> },
+      { to: '/sales/new', label: 'Vendas', icon: <Tag size={18} /> },
     ],
   },
   {

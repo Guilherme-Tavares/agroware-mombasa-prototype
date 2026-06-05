@@ -47,6 +47,16 @@ export function formatPercent(value: number): string {
   return `${Math.round(value)}%`
 }
 
+/** Ex: R$ 4.200,00 */
+export function formatCurrency(value: number): string {
+  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+/** Ex: 12,5 @ — arroba derivada do peso vivo (1@ ≈ 30 kg vivo a 50% de rendimento). */
+export function formatArrobas(arrobas: number): string {
+  return `${arrobas.toFixed(1).replace('.', ',')} @`
+}
+
 export function ageInMonths(birthDate: string | Date): number {
   const days = differenceInDays(new Date(), toDate(birthDate))
   return Math.floor(days / 30)

@@ -165,6 +165,10 @@ interface FarmState {
   // Operações — Slice 3: movimentação de animais
   setBovineMembership: (bovineId: string, herdId: string | null, opts: { startDate: string; entryWeightKg?: number }) => void
   transferBovine: (transfer: BovineTransfer) => void
+  // Financeiro (RF39–RF41)
+  addExpense: (expense: Expense) => void
+  addSaleLot: (lot: SaleLot, bovineIds: string[]) => void
+  registerSale: (sale: Sale) => void
 }
 
 const emptyState = {
@@ -663,6 +667,54 @@ export const useFarmStore = create<FarmState>()(
             memberships: state.memberships.map((m) =>
               m.bovineId === transfer.bovineId && !m.endDate && m.active !== false
                 ? { ...m, endDate: transfer.date, updatedAt: now }
+                : m,
+            ),
+          }
+        }),
+
+      // ── Financeiro ──
+
+      addExpense: (expense) =>
+        set((state) => ({ expenses: [...state.expenses, expense] })),
+
+      // Lote comercial (RF40): cria o lote e os vínculos N:N com os bovinos.
+      addSaleLot: (lot, bovineIds) =>
+        set((state) => ({
+          saleLots: [...state.saleLots, lot],
+          saleLotBovines: [
+            ...state.saleLotBovines,
+            ...bovineIds.map((bovineId) => ({
+              id: crypto.randomUUID(),
+              saleLotId: lot.id,
+              bovineId,
+              active: true,
+              createdAt: lot.createdAt ?? new Date().toISOString(),
+              updatedAt: lot.updatedAt ?? new Date().toISOString(),
+            })),
+          ],
+        })),
+
+      // Venda (RF41): ao confirmar, marca o lote como vendido, inativa os bovinos
+      // do lote e encerra seus pertencimentos ativos.
+      registerSale: (sale) =>
+        set((state) => {
+          const now = new Date().toISOString()
+          const bovineIds = new Set(
+            state.saleLotBovines
+              .filter((lb) => lb.saleLotId === sale.saleLotId && lb.active !== false)
+              .map((lb) => lb.bovineId),
+          )
+          return {
+            sales: [...state.sales, sale],
+            saleLots: state.saleLots.map((l) =>
+              l.id === sale.saleLotId ? { ...l, status: 'vendido' as const, updatedAt: now } : l,
+            ),
+            bovines: state.bovines.map((b) =>
+              bovineIds.has(b.id) ? { ...b, active: false, updatedAt: now } : b,
+            ),
+            memberships: state.memberships.map((m) =>
+              bovineIds.has(m.bovineId) && !m.endDate && m.active !== false
+                ? { ...m, endDate: sale.date, updatedAt: now }
                 : m,
             ),
           }

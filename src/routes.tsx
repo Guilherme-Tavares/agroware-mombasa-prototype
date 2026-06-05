@@ -25,6 +25,9 @@ import SupplyRegister from '@/pages/SupplyRegister/index.tsx'
 import SanitaryEventExecution from '@/pages/SanitaryEventExecution/index.tsx'
 import MembershipRegister from '@/pages/MembershipRegister/index.tsx'
 import BovineTransferRegister from '@/pages/BovineTransferRegister/index.tsx'
+import ExpenseRegister from '@/pages/ExpenseRegister/index.tsx'
+import SaleLotRegister from '@/pages/SaleLotRegister/index.tsx'
+import SaleRegister from '@/pages/SaleRegister/index.tsx'
 import HerdAllocation from '@/pages/HerdAllocation/index.tsx'
 import MapBaseConfig from '@/pages/MapBaseConfig/index.tsx'
 import Profile from '@/pages/Profile/index.tsx'
@@ -65,6 +68,9 @@ export const router = createBrowserRouter([
           { path: 'medications/new', element: <MedicationRegister /> },
           { path: 'feeds/new', element: <FeedRegister /> },
           { path: 'expense-categories/new', element: <ExpenseCategoryRegister /> },
+          { path: 'expenses/new', element: <ExpenseRegister /> },
+          { path: 'sale-lots/new', element: <SaleLotRegister /> },
+          { path: 'sales/new', element: <SaleRegister /> },
           { path: 'sanitary-events/new', element: <SanitaryEventRegister /> },
           { path: 'tasks/new', element: <TaskRegister /> },
           { path: 'operations/allocation', element: <HerdAllocation /> },
