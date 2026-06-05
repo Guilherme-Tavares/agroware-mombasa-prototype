@@ -1,6 +1,7 @@
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 import { AlertTriangle, RefreshCcw } from 'lucide-react'
+import { clearIdb } from '@/lib/idb'
 
 interface Props {
   children: ReactNode
@@ -38,7 +39,8 @@ export default class ErrorBoundary extends Component<Props, State> {
     } catch {
       // ignore
     }
-    window.location.assign('/')
+    // Limpa também o IndexedDB (tiles do mapa e mídias) antes de recarregar.
+    clearIdb().catch(() => {}).finally(() => window.location.assign('/'))
   }
 
   render() {

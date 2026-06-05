@@ -25,7 +25,9 @@ export default function Login() {
   const navigate = useNavigate()
   const { login, loginOffline } = useAuthStore()
 
-  const [mode, setMode] = useState<LoginMode>('email')
+  // Modo offline é o único habilitado no protótipo; o online fica visível porém
+  // desabilitado (decisão 5.6 do documento de alinhamento).
+  const [mode, setMode] = useState<LoginMode>('offline')
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [name, setName]         = useState('')
@@ -88,20 +90,23 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Mode toggle pills */}
+          {/* Mode toggle pills — modo online desabilitado no protótipo */}
           <div className="flex rounded-lg bg-gray-100 p-1 gap-1">
             <button
               type="button"
-              onClick={() => switchMode('email')}
+              disabled
+              aria-disabled="true"
+              title="Disponível apenas no modo online (indisponível no protótipo)"
               className={[
                 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-button transition-all duration-200',
-                mode === 'email'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-400 hover:text-gray-600',
+                'text-gray-300 cursor-not-allowed opacity-60',
               ].join(' ')}
             >
               <Wifi size={14} />
               Entrar com email
+              <span className="ml-1 text-[9px] font-medium uppercase tracking-wide bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">
+                Online
+              </span>
             </button>
             <button
               type="button"
@@ -197,13 +202,10 @@ export default function Login() {
             Primeiro acesso?{' '}
             <button
               type="button"
-              onClick={() => {
-                login('Produtor', '')
-                navigate('/demarcation', { replace: true })
-              }}
+              onClick={() => switchMode('offline')}
               className="text-primary underline underline-offset-2 hover:text-primary-dark transition-colors"
             >
-              Configure sua propriedade
+              Informe seu nome e comece offline
             </button>
           </p>
         </motion.div>

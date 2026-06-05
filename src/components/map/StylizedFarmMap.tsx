@@ -276,7 +276,7 @@ function DivisionPolygon({ points, fill, isSelected, hasCritical, onClick }: Div
 interface HerdMarkerProps {
   center:     Point
   count:      number
-  purpose:    'recria' | 'engorda'
+  purpose:    'recria' | 'engorda' | 'misto'
   isSelected: boolean
   onClick:    () => void
 }

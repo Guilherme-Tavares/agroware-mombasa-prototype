@@ -15,10 +15,10 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Path aliases */
-    "baseUrl": ".",
+    /* Path aliases (sem baseUrl: paths resolvidos relativos a este tsconfig,
+       suportado desde o TS 5.0; baseUrl foi deprecado no TS 6) */
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
 
     /* Linting */

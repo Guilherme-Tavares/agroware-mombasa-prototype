@@ -1,35 +1,101 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type {
-  Producer,
+  User,
+  UserConfig,
+  UserProperty,
+  Invitation,
   Farm,
   Division,
   Forage,
+  ForagePlanting,
   Herd,
   Bovine,
-  Allocation,
-  FeedTrough,
-  Feed,
+  BovinePhoto,
   Season,
+  Weighing,
+  Medication,
+  MedicationStock,
+  MedicationApplication,
+  SanitaryEvent,
+  Feed,
+  FeedStock,
+  Allocation,
+  Membership,
   SeasonPassage,
+  FeedTrough,
+  BovineTransfer,
+  Task,
+  ExpenseCategory,
+  Expense,
+  SaleLot,
+  SaleLotBovine,
+  Sale,
+  Notification,
+  NotificationUser,
   Refill,
 } from '@/types/domain'
 import type { MockData } from '@/data/mockFarm'
 
 interface FarmState {
-  producer: Producer | null
+  // Conta e acesso
+  user: User | null
+  users: User[]
+  userConfig: UserConfig | null
+  userProperties: UserProperty[]
+  invitations: Invitation[]
+
+  // Propriedade ativa e catálogo de propriedades
   farm: Farm | null
+  farms: Farm[]
+  activePropertyId: string | null
+
+  // Pastagem
   divisions: Division[]
   forages: Forage[]
+  foragePlantings: ForagePlanting[]
+  feedTroughs: FeedTrough[]
+
+  // Rebanho e animais
   herds: Herd[]
   bovines: Bovine[]
-  allocations: Allocation[]
-  feedTroughs: FeedTrough[]
-  feeds: Feed[]
+  bovinePhotos: BovinePhoto[]
   seasons: Season[]
-  seasonPassages: SeasonPassage[]
+  weighings: Weighing[]
 
+  // Sanidade
+  medications: Medication[]
+  medicationStocks: MedicationStock[]
+  medicationApplications: MedicationApplication[]
+  sanitaryEvents: SanitaryEvent[]
+
+  // Alimentação
+  feeds: Feed[]
+  feedStocks: FeedStock[]
+
+  // Operações
+  allocations: Allocation[]
+  memberships: Membership[]
+  seasonPassages: SeasonPassage[]
+  bovineTransfers: BovineTransfer[]
+
+  // Agenda
+  tasks: Task[]
+
+  // Financeiro
+  expenseCategories: ExpenseCategory[]
+  expenses: Expense[]
+  saleLots: SaleLot[]
+  saleLotBovines: SaleLotBovine[]
+  sales: Sale[]
+
+  // Notificações
+  notifications: Notification[]
+  notificationUsers: NotificationUser[]
+
+  // ── Ações ──
   seedFromMock: (data: MockData) => void
+  setActiveProperty: (propertyId: string) => void
   updateFarm: (updates: Partial<Farm>) => void
   addBovine: (bovine: Bovine) => void
   updateBovine: (id: string, updates: Partial<Bovine>) => void
@@ -41,39 +107,106 @@ interface FarmState {
   addDivision: (division: Division) => void
 }
 
+const emptyState = {
+  user: null,
+  users: [],
+  userConfig: null,
+  userProperties: [],
+  invitations: [],
+  farm: null,
+  farms: [],
+  activePropertyId: null,
+  divisions: [],
+  forages: [],
+  foragePlantings: [],
+  feedTroughs: [],
+  herds: [],
+  bovines: [],
+  bovinePhotos: [],
+  seasons: [],
+  weighings: [],
+  medications: [],
+  medicationStocks: [],
+  medicationApplications: [],
+  sanitaryEvents: [],
+  feeds: [],
+  feedStocks: [],
+  allocations: [],
+  memberships: [],
+  seasonPassages: [],
+  bovineTransfers: [],
+  tasks: [],
+  expenseCategories: [],
+  expenses: [],
+  saleLots: [],
+  saleLotBovines: [],
+  sales: [],
+  notifications: [],
+  notificationUsers: [],
+}
+
 export const useFarmStore = create<FarmState>()(
   persist(
     (set) => ({
-      producer: null,
-      farm: null,
-      divisions: [],
-      forages: [],
-      herds: [],
-      bovines: [],
-      allocations: [],
-      feedTroughs: [],
-      feeds: [],
-      seasons: [],
-      seasonPassages: [],
+      ...emptyState,
 
-      updateFarm: (updates) =>
-        set((state) => ({
-          farm: state.farm ? { ...state.farm, ...updates } : state.farm,
-        })),
-
+      // Carrega o dataset mock completo. A propriedade ativa padrão é a
+      // `data.farm` (Sítio Santa Fé); `data.farms` é o catálogo selecionável.
       seedFromMock: (data) =>
         set({
-          producer: data.producer,
+          user: data.user,
+          users: data.users,
+          userConfig: data.userConfig,
+          userProperties: data.userProperties,
+          invitations: data.invitations,
           farm: data.farm,
+          farms: data.farms,
+          activePropertyId: data.farm.id,
           divisions: data.divisions,
           forages: data.forages,
+          foragePlantings: data.foragePlantings,
+          feedTroughs: data.feedTroughs,
           herds: data.herds,
           bovines: data.bovines,
-          allocations: data.allocations,
-          feedTroughs: data.feedTroughs,
-          feeds: data.feeds,
+          bovinePhotos: data.bovinePhotos,
           seasons: data.seasons,
+          weighings: data.weighings,
+          medications: data.medications,
+          medicationStocks: data.medicationStocks,
+          medicationApplications: data.medicationApplications,
+          sanitaryEvents: data.sanitaryEvents,
+          feeds: data.feeds,
+          feedStocks: data.feedStocks,
+          allocations: data.allocations,
+          memberships: data.memberships,
           seasonPassages: data.seasonPassages,
+          bovineTransfers: data.bovineTransfers,
+          tasks: data.tasks,
+          expenseCategories: data.expenseCategories,
+          expenses: data.expenses,
+          saleLots: data.saleLots,
+          saleLotBovines: data.saleLotBovines,
+          sales: data.sales,
+          notifications: data.notifications,
+          notificationUsers: data.notificationUsers,
+        }),
+
+      // Troca a propriedade ativa (RF06). Mantém `farm` em sincronia com a
+      // seleção para que os consumidores existentes de `farm` sigam válidos.
+      setActiveProperty: (propertyId) =>
+        set((state) => {
+          const next = state.farms.find((f) => f.id === propertyId)
+          return next ? { activePropertyId: propertyId, farm: next } : state
+        }),
+
+      updateFarm: (updates) =>
+        set((state) => {
+          if (!state.farm) return state
+          const updated = { ...state.farm, ...updates }
+          return {
+            farm: updated,
+            farms: state.farms.map((f) => (f.id === updated.id ? updated : f)),
+          }
         }),
 
       addBovine: (bovine) =>
@@ -133,6 +266,13 @@ export const useFarmStore = create<FarmState>()(
       addDivision: (division) =>
         set((state) => ({ divisions: [...state.divisions, division] })),
     }),
-    { name: 'agroware:farm' },
+    {
+      name: 'agroware:farm',
+      // v2: modelo expandido para o escopo consolidado (32 entidades). Estados
+      // persistidos da v1 (12 coleções, Fazenda São José) são descartados para
+      // que `seedIfEmpty` repopule com o dataset novo na próxima carga.
+      version: 2,
+      migrate: () => ({ ...emptyState }) as unknown as FarmState,
+    },
   ),
 )

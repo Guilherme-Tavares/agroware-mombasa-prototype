@@ -31,7 +31,7 @@ export default function Input({
     <div className="flex flex-col gap-1">
       <div className="relative">
         {/* ícone posicionado dentro do campo */}
-        {icon && iconPosition === 'left' && (
+        {!!icon && iconPosition === 'left' && (
           <span
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
             aria-hidden="true"
@@ -54,8 +54,8 @@ export default function Input({
             'peer block w-full rounded-input border bg-white text-body text-gray-900 transition-all duration-150 outline-none',
             'placeholder-transparent',
             label ? 'pb-2 pt-6 px-4' : 'py-3 px-4',
-            icon && iconPosition === 'left' && 'pl-10',
-            icon && iconPosition === 'right' && 'pr-10',
+            !!icon && iconPosition === 'left' && 'pl-10',
+            !!icon && iconPosition === 'right' && 'pr-10',
             hasError
               ? 'border-alert focus:border-alert focus:ring-1 focus:ring-alert'
               : 'border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary',
@@ -70,7 +70,7 @@ export default function Input({
             htmlFor={inputId}
             className={cn(
               'pointer-events-none absolute left-4 text-xs font-medium transition-all duration-150',
-              icon && iconPosition === 'left' && 'left-10',
+              !!icon && iconPosition === 'left' && 'left-10',
               'top-2.5',
               hasError ? 'text-alert' : 'text-primary',
               // quando input está vazio E não focado: desce para o centro

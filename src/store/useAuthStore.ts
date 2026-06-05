@@ -21,14 +21,14 @@ export const useAuthStore = create<AuthState>()(
       login: (name, email) =>
         set({
           isAuthenticated: true,
-          producerName: name || 'Guilherme Maricato Tavares',
+          producerName: name.trim(),
           producerEmail: email ?? null,
         }),
 
       loginOffline: (name) =>
         set({
           isAuthenticated: true,
-          producerName: name || 'Guilherme Maricato Tavares',
+          producerName: name.trim(),
           producerEmail: null,
         }),
 

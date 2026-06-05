@@ -388,7 +388,7 @@ function GMDChart() {
               borderRadius: 8,
               fontSize: 12,
             }}
-            formatter={(v: number) => [formatGMD(v), 'GMD']}
+            formatter={(value) => [formatGMD(Number(value)), 'GMD']}
           />
           <Line
             type="monotone"
@@ -469,7 +469,6 @@ export default function Dashboard() {
   const producerName = useAuthStore((s) => s.producerName)
   const farm         = useFarmStore((s) => s.farm)
   const bovines      = useFarmStore((s) => s.bovines)
-  const feedTroughs  = useFarmStore((s) => s.feedTroughs)
   const alerts       = useAlerts()
 
   const [activeTab, setActiveTab] = useState<'map' | 'alerts'>('map')

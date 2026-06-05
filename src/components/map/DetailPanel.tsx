@@ -156,7 +156,7 @@ function DivisionDetail({ id, onClose }: { id: string; onClose: () => void }) {
       <PanelHeader
         icon={<MapPin size={20} />}
         title={division.name}
-        subtitle={`${formatArea(division.area)} · ${division.type === 'pasture' ? 'Piquete' : division.type}`}
+        subtitle={`${formatArea(division.area)} · ${division.type === 'pasto' ? 'Pastagem' : division.type}`}
         onClose={onClose}
       />
 
@@ -447,9 +447,9 @@ function TroughDetail({ id, onClose }: { id: string; onClose: () => void }) {
       <div className="flex-1 overflow-y-auto py-4 space-y-5">
         <div className="flex flex-wrap gap-2">
           <Badge variant={HP_BADGE[status]}>{HP_LABEL[status]}</Badge>
-          <Badge variant="neutral">{trough.material === 'concrete' ? 'Concreto'
-            : trough.material === 'plastic' ? 'Plástico'
-            : trough.material === 'wood' ? 'Madeira' : 'Metal'}</Badge>
+          <Badge variant="neutral">{trough.material === 'concreto' ? 'Concreto'
+            : trough.material === 'plastico' ? 'Plástico'
+            : trough.material === 'madeira' ? 'Madeira' : 'Metal'}</Badge>
         </div>
 
         {/* Sistema HP visualization */}

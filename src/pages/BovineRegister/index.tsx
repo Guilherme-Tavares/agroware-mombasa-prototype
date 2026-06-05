@@ -50,9 +50,9 @@ const SEX_OPTIONS: SelectOption[] = [
 ]
 
 const ORIGIN_OPTIONS: SelectOption[] = [
-  { value: 'purchased',   label: 'Comprado' },
-  { value: 'born',        label: 'Nascido na fazenda' },
-  { value: 'transferred', label: 'Transferido' },
+  { value: 'comprado',    label: 'Comprado' },
+  { value: 'doacao',      label: 'Doação' },
+  { value: 'transferido', label: 'Transferido' },
 ]
 
 // ─── Sub-components ───────────────────────────────────────────────────────────

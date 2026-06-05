@@ -39,10 +39,11 @@ function validate(f: Fields): Partial<Record<FieldKey, string>> {
 // ─── Static options ───────────────────────────────────────────────────────────
 
 const TYPE_OPTIONS: SelectOption[] = [
-  { value: 'pasture', label: 'Pastagem' },
-  { value: 'paddock', label: 'Piquete' },
-  { value: 'reserve', label: 'Reserva' },
-  { value: 'corral',  label: 'Curral' },
+  { value: 'pasto',      label: 'Pastagem' },
+  { value: 'reserva',    label: 'Reserva' },
+  { value: 'curral',     label: 'Curral' },
+  { value: 'manga',      label: 'Manga' },
+  { value: 'instalacao', label: 'Instalação' },
 ]
 
 const STATUS_OPTIONS: SelectOption[] = [

@@ -64,7 +64,7 @@ const STATUS_LABEL: Record<'ok' | 'warning' | 'alert', string> = {
 }
 
 const MATERIAL_LABEL: Record<string, string> = {
-  concrete: 'Concreto', wood: 'Madeira', plastic: 'Plástico', metal: 'Metal',
+  concreto: 'Concreto', madeira: 'Madeira', plastico: 'Plástico', metal: 'Metal',
 }
 
 // ─── HP timeline ──────────────────────────────────────────────────────────────
