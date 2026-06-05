@@ -1,99 +1,46 @@
+import { Suspense } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 import AppShell, { ProtectedRoute } from '@/components/layout/AppShell.tsx'
+import RouteFallback from '@/components/layout/RouteFallback.tsx'
 import Login from '@/pages/Login/index.tsx'
-import Dashboard from '@/pages/Dashboard/index.tsx'
-import MapPage from '@/pages/Map/index.tsx'
-import Demarcation from '@/pages/Demarcation/index.tsx'
-import BovineRegister from '@/pages/BovineRegister/index.tsx'
-import BovineList from '@/pages/BovineList/index.tsx'
-import BovineDetail from '@/pages/BovineDetail/index.tsx'
-import DivisionRegister from '@/pages/DivisionRegister/index.tsx'
-import DivisionList from '@/pages/DivisionList/index.tsx'
-import DivisionDetail from '@/pages/DivisionDetail/index.tsx'
-import HerdRegister from '@/pages/HerdRegister/index.tsx'
-import HerdList from '@/pages/HerdList/index.tsx'
-import HerdDetail from '@/pages/HerdDetail/index.tsx'
-import SeasonRegister from '@/pages/SeasonRegister/index.tsx'
-import SeasonList from '@/pages/SeasonList/index.tsx'
-import SeasonDetail from '@/pages/SeasonDetail/index.tsx'
-import TroughRegister from '@/pages/TroughRegister/index.tsx'
-import TroughList from '@/pages/TroughList/index.tsx'
-import TroughDetail from '@/pages/TroughDetail/index.tsx'
-import MedicationRegister from '@/pages/MedicationRegister/index.tsx'
-import MedicationList from '@/pages/MedicationList/index.tsx'
-import MedicationDetail from '@/pages/MedicationDetail/index.tsx'
-import FeedRegister from '@/pages/FeedRegister/index.tsx'
-import FeedList from '@/pages/FeedList/index.tsx'
-import FeedDetail from '@/pages/FeedDetail/index.tsx'
-import ExpenseCategoryRegister from '@/pages/ExpenseCategoryRegister/index.tsx'
-import ExpenseCategoryList from '@/pages/ExpenseCategoryList/index.tsx'
-import ExpenseCategoryDetail from '@/pages/ExpenseCategoryDetail/index.tsx'
-import SanitaryEventRegister from '@/pages/SanitaryEventRegister/index.tsx'
-import SanitaryEventList from '@/pages/SanitaryEventList/index.tsx'
-import SanitaryEventDetail from '@/pages/SanitaryEventDetail/index.tsx'
-import TaskRegister from '@/pages/TaskRegister/index.tsx'
-import TaskList from '@/pages/TaskList/index.tsx'
-import TaskDetail from '@/pages/TaskDetail/index.tsx'
-import PropertyRegister from '@/pages/PropertyRegister/index.tsx'
-import PropertyList from '@/pages/PropertyList/index.tsx'
-import PropertyDetail from '@/pages/PropertyDetail/index.tsx'
-import UsersInvitesList from '@/pages/UsersInvitesList/index.tsx'
-import Notifications from '@/pages/Notifications/index.tsx'
-import ReportsIndex from '@/pages/reports/ReportsIndex.tsx'
-import ExpenseReport from '@/pages/reports/ExpenseReport.tsx'
-import PurchaseReport from '@/pages/reports/PurchaseReport.tsx'
-import SalesReport from '@/pages/reports/SalesReport.tsx'
-import ApplicationReport from '@/pages/reports/ApplicationReport.tsx'
-import RefillReport from '@/pages/reports/RefillReport.tsx'
-import PerformanceReport from '@/pages/reports/PerformanceReport.tsx'
-import InventoryReport from '@/pages/reports/InventoryReport.tsx'
-import ForageRegister from '@/pages/ForageRegister/index.tsx'
-import ForageList from '@/pages/ForageList/index.tsx'
-import ForageDetail from '@/pages/ForageDetail/index.tsx'
-import MedicationStockRegister from '@/pages/MedicationStockRegister/index.tsx'
-import MedicationStockList from '@/pages/MedicationStockList/index.tsx'
-import FeedStockRegister from '@/pages/FeedStockRegister/index.tsx'
-import FeedStockList from '@/pages/FeedStockList/index.tsx'
-import WeighingRegister from '@/pages/WeighingRegister/index.tsx'
-import SeasonPassageRegister from '@/pages/SeasonPassageRegister/index.tsx'
-import MedicationApplicationRegister from '@/pages/MedicationApplicationRegister/index.tsx'
-import SupplyRegister from '@/pages/SupplyRegister/index.tsx'
-import SanitaryEventExecution from '@/pages/SanitaryEventExecution/index.tsx'
-import MembershipRegister from '@/pages/MembershipRegister/index.tsx'
-import BovineTransferRegister from '@/pages/BovineTransferRegister/index.tsx'
-import ExpenseRegister from '@/pages/ExpenseRegister/index.tsx'
-import ExpenseList from '@/pages/ExpenseList/index.tsx'
-import ExpenseDetail from '@/pages/ExpenseDetail/index.tsx'
-import SaleLotRegister from '@/pages/SaleLotRegister/index.tsx'
-import SaleLotList from '@/pages/SaleLotList/index.tsx'
-import SaleLotDetail from '@/pages/SaleLotDetail/index.tsx'
-import SaleRegister from '@/pages/SaleRegister/index.tsx'
-import SaleList from '@/pages/SaleList/index.tsx'
-import SaleDetail from '@/pages/SaleDetail/index.tsx'
-import HerdAllocation from '@/pages/HerdAllocation/index.tsx'
-import MapBaseConfig from '@/pages/MapBaseConfig/index.tsx'
-import WeighingHistory from '@/pages/history/WeighingHistory.tsx'
-import ApplicationHistory from '@/pages/history/ApplicationHistory.tsx'
-import RefillHistory from '@/pages/history/RefillHistory.tsx'
-import AllocationHistory from '@/pages/history/AllocationHistory.tsx'
-import MembershipHistory from '@/pages/history/MembershipHistory.tsx'
-import PassageHistory from '@/pages/history/PassageHistory.tsx'
-import TransferHistory from '@/pages/history/TransferHistory.tsx'
-import Profile from '@/pages/Profile/index.tsx'
-import Settings from '@/pages/Settings/index.tsx'
-import Access from '@/pages/Access/index.tsx'
-import FeedTroughDetail from '@/pages/FeedTroughDetail/index.tsx'
-import DevComponents from '@/pages/DevComponents/index.tsx'
+
+// Telas carregadas sob demanda (code-splitting por rota) vêm de `@/lazyPages`.
+// O `Suspense` no `AnimatedOutlet` cobre as rotas filhas do AppShell; `Login`,
+// `AppShell` e `ProtectedRoute` ficam eager por serem estruturais / a entrada.
+import {
+  Dashboard, MapPage, Demarcation, BovineRegister, BovineList, BovineDetail,
+  DivisionRegister, DivisionList, DivisionDetail, HerdRegister, HerdList, HerdDetail,
+  SeasonRegister, SeasonList, SeasonDetail, TroughRegister, TroughList, TroughDetail,
+  MedicationRegister, MedicationList, MedicationDetail, FeedRegister, FeedList, FeedDetail,
+  ExpenseCategoryRegister, ExpenseCategoryList, ExpenseCategoryDetail,
+  SanitaryEventRegister, SanitaryEventList, SanitaryEventDetail,
+  TaskRegister, TaskList, TaskDetail, PropertyRegister, PropertyList, PropertyDetail,
+  UsersInvitesList, Notifications, ReportsIndex, ExpenseReport, PurchaseReport, SalesReport,
+  ApplicationReport, RefillReport, PerformanceReport, InventoryReport,
+  ForageRegister, ForageList, ForageDetail, MedicationStockRegister, MedicationStockList,
+  FeedStockRegister, FeedStockList, WeighingRegister, SeasonPassageRegister,
+  MedicationApplicationRegister, SupplyRegister, SanitaryEventExecution, MembershipRegister,
+  BovineTransferRegister, ExpenseRegister, ExpenseList, ExpenseDetail,
+  SaleLotRegister, SaleLotList, SaleLotDetail, SaleRegister, SaleList, SaleDetail,
+  HerdAllocation, MapBaseConfig, WeighingHistory, ApplicationHistory, RefillHistory,
+  AllocationHistory, MembershipHistory, PassageHistory, TransferHistory,
+  Profile, Settings, Access, FeedTroughDetail, DevComponents,
+} from '@/lazyPages.ts'
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     element: <Login />,
   },
-  // Rota de desenvolvimento — fora do AppShell e sem proteção de auth
+  // Rota de desenvolvimento — fora do AppShell e sem proteção de auth.
+  // Suspense próprio porque não passa pelo AnimatedOutlet.
   {
     path: '/dev/components',
-    element: <DevComponents />,
+    element: (
+      <Suspense fallback={<RouteFallback />}>
+        <DevComponents />
+      </Suspense>
+    ),
   },
   {
     element: <ProtectedRoute />,

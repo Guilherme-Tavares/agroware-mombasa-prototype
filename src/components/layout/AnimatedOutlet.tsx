@@ -1,5 +1,7 @@
+import { Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Outlet, useLocation } from 'react-router-dom'
+import RouteFallback from './RouteFallback'
 
 const variants = {
   initial: { opacity: 0, y: 16 },
@@ -22,7 +24,9 @@ export default function AnimatedOutlet() {
         transition={transition}
         style={{ minHeight: '100%' }}
       >
-        <Outlet />
+        <Suspense fallback={<RouteFallback />}>
+          <Outlet />
+        </Suspense>
       </motion.div>
     </AnimatePresence>
   )

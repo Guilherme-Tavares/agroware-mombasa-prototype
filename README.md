@@ -235,6 +235,9 @@ Os bovinos do dataset mock são criados programaticamente em `mockFarm.ts` com v
 **React Router v7 em modo biblioteca.**
 Usado como biblioteca standalone (sem o framework adapter do Vite), mantendo a mesma API `createBrowserRouter` + `RouterProvider` familiar do v6 data router.
 
+**Code-splitting por rota (`React.lazy`).**
+As ~85 telas são carregadas sob demanda via `React.lazy` (declaradas em [src/lazyPages.ts](src/lazyPages.ts)); cada uma vira um chunk separado no build. Isso tirou as libs pesadas do bundle inicial — **recharts** (~316 kB) só baixa ao abrir uma tela com gráfico e **Leaflet** (~151 kB) só nas telas de mapa. O bundle de entrada caiu de ~1,4 MB para ~360 kB. Um `<Suspense>` no [AnimatedOutlet](src/components/layout/AnimatedOutlet.tsx) exibe um spinner enquanto o chunk da rota chega (imperceptível em cache/rede local). `Login`, `AppShell` e `ProtectedRoute` ficam eager por serem a porta de entrada / estrutura.
+
 **TypeScript 6 com `erasableSyntaxOnly`.**
 A configuração proíbe `enum` e `namespace`. Todos os tipos de domínio usam string literal unions (`'recria' | 'engorda'`) e interfaces, compatíveis com a restrição.
 
