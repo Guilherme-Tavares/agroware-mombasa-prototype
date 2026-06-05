@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MapContainer, Polygon, Polyline, CircleMarker, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -81,10 +81,12 @@ export default function GeoDemarcation({ onCancel }: GeoDemarcationProps) {
   const [uf, setUf]             = useState(farm?.state ?? '')
   const [divType, setDivType]   = useState<DivisionType>('pasto')
 
+  // Refs com o valor mais recente, lidos no handler de clique do Leaflet (ligado
+  // uma vez). Atualizados em efeito para não escrever na ref durante o render.
   const verticesRef = useRef<GeoPoint[]>(vertices)
-  verticesRef.current = vertices
   const closedRef = useRef<boolean>(isClosed)
-  closedRef.current = isClosed
+  useEffect(() => { verticesRef.current = vertices }, [vertices])
+  useEffect(() => { closedRef.current = isClosed }, [isClosed])
 
   const areaHa      = useMemo(() => geoPolygonAreaHa(vertices), [vertices])
   const perimeterM  = useMemo(() => geoPolygonPerimeterM(vertices), [vertices])

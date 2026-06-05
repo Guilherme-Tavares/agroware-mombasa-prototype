@@ -49,7 +49,7 @@ export function useMapPanZoom({
     initialPan:  Point
   } | null>(null)
 
-  function clientToSVG(clientX: number, clientY: number): Point {
+  const clientToSVG = useCallback((clientX: number, clientY: number): Point => {
     const svg = svgRef.current
     if (!svg) return { x: 0, y: 0 }
     const rect = svg.getBoundingClientRect()
@@ -57,7 +57,7 @@ export function useMapPanZoom({
       x: ((clientX - rect.left) / rect.width)  * viewBoxWidth,
       y: ((clientY - rect.top)  / rect.height) * viewBoxHeight,
     }
-  }
+  }, [viewBoxWidth, viewBoxHeight])
 
   // Native wheel listener (passive: false to allow preventDefault)
   useEffect(() => {
@@ -82,7 +82,7 @@ export function useMapPanZoom({
 
     svg.addEventListener('wheel', onWheel, { passive: false })
     return () => svg.removeEventListener('wheel', onWheel)
-  }, [viewBoxWidth, viewBoxHeight])
+  }, [clientToSVG])
 
   function handlePointerDown(e: React.PointerEvent<SVGSVGElement>) {
     if (e.button !== undefined && e.button !== 0 && e.pointerType === 'mouse') return

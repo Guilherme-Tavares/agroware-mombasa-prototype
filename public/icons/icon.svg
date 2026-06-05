@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Ícone shippável da PWA (referenciado no manifest). Gerado a partir de
+       public/icons/source.svg. Fundo full-bleed verde primário + marca "M". -->
+  <rect width="512" height="512" rx="96" fill="#2E7D32"/>
+  <path
+    d="M 56,448 L 56,64 L 176,224 Q 256,336 336,224 L 456,64 L 456,448"
+    stroke="#FFFFFF"
+    stroke-width="80"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+</svg>

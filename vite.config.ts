@@ -12,21 +12,26 @@ export default defineConfig({
         name: 'Agroware Mombasa',
         short_name: 'Agroware',
         description: 'Sistema de gestão de propriedades rurais para pecuária de corte',
+        lang: 'pt-BR',
         theme_color: '#2E7D32',
         background_color: '#FFFFFF',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
+        // Ícone SVG escalável (instalável em navegadores modernos). PNGs raster
+        // 192/512 ficam como melhoria futura para iOS/Android legado — ver README.
         icons: [
           {
-            src: '/icons/pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png',
+            src: '/icons/icon.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any',
           },
           {
-            src: '/icons/pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
+            src: '/icons/icon.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'maskable',
           },
         ],
       },

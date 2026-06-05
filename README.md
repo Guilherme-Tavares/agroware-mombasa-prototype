@@ -2,7 +2,7 @@
 
 Protótipo navegável de alta fidelidade do **Agroware Mombasa**, sistema de gestão pecuária focado em recria e engorda de bovinos machos em regime semi-intensivo. Construído em React + TypeScript, opera offline-first.
 
-> **Status:** Steps 1–4 concluídos. As 8 telas previstas estão implementadas e o app passa nos checks de TypeScript estrito.
+> **Status:** Steps (Fases) 0–9 concluídos. O protótipo cobre os 74 requisitos funcionais (RF01–RF74) e as 32 entidades do modelo de dados: cadastros, operações com lógica de negócio, camada de consulta (edição + remoção reversível), financeiro, notificações persistidas, suíte de relatórios com export CSV e a fase de polimento (dashboard reconectado, estados vazio/erro, scaffold de i18n, PWA instalável). `npm run build` e o lint passam sem erros.
 
 ---
 
@@ -18,6 +18,7 @@ Protótipo navegável de alta fidelidade do **Agroware Mombasa**, sistema de ges
 - [Decisões técnicas](#decisões-técnicas)
 - [PWA — ícones e Lighthouse](#pwa--ícones-e-lighthouse)
 - [Acessibilidade](#acessibilidade)
+- [Estados de UI](#estados-de-ui-vazio--erro--carregamento)
 - [Responsividade](#responsividade)
 - [Gaps conhecidos](#gaps-conhecidos)
 
@@ -39,6 +40,8 @@ O Agroware Mombasa é um PWA mobile-first que substitui controles manuais por um
 | 8 | Operação de lotação | `/operations/allocation` | ✅ |
 | 9 | Detalhe de cocho (Sistema HP) | `/feed-troughs/:id` | ✅ |
 
+> A tabela acima são as 9 telas de alta fidelidade do protótipo original (Steps 1–4). As fases 5–9 expandiram o app para a suíte completa do escopo: cadastros de todas as entidades, operações com lógica de negócio (pesagem, aplicação sanitária, abastecimento, transferência, vínculos, vendas), camada de consulta (lista + detalhe + edição + remoção reversível) e históricos, financeiro, notificações persistidas e 7 relatórios com export CSV — todas registradas em `src/routes.tsx`.
+
 ---
 
 ## Stack técnico
@@ -56,6 +59,7 @@ O Agroware Mombasa é um PWA mobile-first que substitui controles manuais por um
 | Gráficos | Recharts 3 |
 | Datas | date-fns 4 (locale pt-BR) |
 | PWA | vite-plugin-pwa 1 (Workbox 7) |
+| i18n | scaffold próprio (`src/i18n`, sem dependência) |
 | Fontes | @fontsource/roboto, @fontsource/roboto-mono |
 | Persistência | localStorage (chaves `agroware:farm`, `agroware:auth`, `agroware:ui`) |
 
@@ -140,6 +144,9 @@ src/
 │   ├── useFarmStore.ts             # Propriedade, divisões, rebanhos, bovinos, cochos
 │   ├── useAuthStore.ts             # Sessão local
 │   └── useUIStore.ts               # Toasts, sidebar, camadas do mapa
+├── i18n/
+│   ├── pt-BR.ts                    # Dicionário de strings de UI (namespaces: common, dashboard, nav)
+│   └── index.ts                    # Helper t() com interpolação + re-export de utils/labels
 ├── styles/
 │   └── globals.css                 # Tailwind directives + tipografia/sombras semânticas
 ├── types/
@@ -241,19 +248,18 @@ Captura erros não tratados, exibe a mensagem e oferece dois fallbacks: recarreg
 
 ## PWA — ícones e Lighthouse
 
-O `vite-plugin-pwa` está configurado com manifest, `registerType: 'autoUpdate'` e Workbox. O service worker é gerado no build.
+O `vite-plugin-pwa` está configurado com manifest (`lang: pt-BR`), `registerType: 'autoUpdate'` e Workbox. O service worker (`sw.js` + `workbox-*.js`) e o `manifest.webmanifest` são gerados no build.
 
-**Ícones — não versionados, precisam ser gerados a partir do SVG fonte:**
+**Ícone — SVG escalável shippado (instalável em navegadores modernos):**
 
 ```
 public/icons/
-├── source.svg              ← fonte (versionada)
-├── pwa-192x192.png         ← gerar
-├── pwa-512x512.png         ← gerar
-└── README.md               ← instruções
+├── icon.svg                ← ícone referenciado no manifest (purpose any + maskable)
+├── source.svg              ← fonte de referência
+└── README.md               ← instruções de geração de PNGs
 ```
 
-Veja `public/icons/README.md` para 3 opções de geração (pwa-asset-generator, ImageMagick, manual).
+O manifest referencia `icon.svg` com `sizes: "any"` e `type: "image/svg+xml"`, o que basta para instalação em Chrome/Edge/Firefox atuais. PNGs raster `pwa-192x192.png` / `pwa-512x512.png` continuam **recomendados como melhoria** para máxima compatibilidade (home-screen do iOS e Android legado, que preferem PNG). Veja `public/icons/README.md` para opções de geração (pwa-asset-generator, ImageMagick) — não há rasterizador no projeto, então a geração é um passo manual.
 
 **Verificar Lighthouse PWA score:**
 
@@ -267,7 +273,7 @@ Targets esperados:
 - Performance: ≥ 90
 - Accessibility: ≥ 90
 - Best Practices: ≥ 90
-- PWA: instalável (precisa dos ícones gerados)
+- PWA: instalável (manifest + SW + ícone SVG já presentes; PNGs raster melhoram a nota em alguns ambientes)
 
 ---
 
@@ -281,7 +287,15 @@ Targets esperados:
 - Labels associadas por `htmlFor`/`id` em Inputs e Selects
 - Touch targets ≥ 44×44px (MobileBottomNav usa `min-h-[56px]`)
 - Contraste de texto AA: primary `#2E7D32` sobre branco passa WCAG AA para body text
-- `lang="pt-BR"` no `<html>`
+- `lang="pt-BR"` no `<html>` e no manifest
+
+---
+
+## Estados de UI (vazio / erro / carregamento)
+
+- **Vazio:** componente `ui/EmptyState` usado nas ~45 telas de lista, detalhe e histórico; os 7 relatórios tratam tabela vazia inline e desabilitam o export quando não há linhas.
+- **Erro:** `ErrorBoundary` global na raiz (`App.tsx`) com fallback acessível (`role="alert"`), recarregar ou resetar dados.
+- **Carregamento:** o estado vive 100% em stores Zustand com `persist` (rehidratação **síncrona** a partir do `localStorage`) e o dataset é semeado antes do mount — não há fetch assíncrono, então spinners de carregamento são majoritariamente desnecessários. O primitivo `ui/Skeleton` existe para quando dados remotos entrarem no escopo.
 
 ---
 
@@ -300,10 +314,10 @@ Breakpoints Tailwind padrão: `sm 640`, `md 768`, `lg 1024`, `xl 1280`, `2xl 153
 
 ## Gaps conhecidos
 
-Itens que ficaram fora do Step 4 ou poderiam evoluir:
+Itens que poderiam evoluir além do escopo atual:
 
 **Para gerar antes de deploy/demo**
-- Ícones PWA `pwa-192x192.png` e `pwa-512x512.png` (ver `public/icons/README.md`)
+- PNGs raster `pwa-192x192.png` / `pwa-512x512.png` para iOS/Android legado (o ícone SVG já torna a PWA instalável nos navegadores atuais — ver `public/icons/README.md`)
 - Screenshots reais para incluir num doc de apresentação
 
 **Para validar manualmente**
@@ -311,19 +325,13 @@ Itens que ficaram fora do Step 4 ou poderiam evoluir:
 - Teste cross-browser (Safari iOS principalmente) — pinch zoom, viewport `100svh`
 - Teste de instalação PWA no Chrome Android e Edge Desktop
 
-**Telas que ficaram como placeholders**
-- `/reports` (link existe na Sidebar mas a rota não foi implementada)
-- `/settings` (mesmo caso)
-- `/bovines/:id` (visualização — só `/bovines/new` e `/bovines/:id/edit` existem)
-- Listagens (`/bovines`, `/herds`, `/divisions`) — os cadastros existem mas não há tela de "lista de todos"
-
 **Evoluções razoáveis**
 - Validação de formulário com `zod` em vez de função `validate` manual
 - Substituir factory `makeBovines` por seed determinístico com `seedrandom` para gerar variações de raça/idade
-- `pwa-asset-generator` como devDependency + script `npm run icons` para regenerar a partir do SVG
+- `pwa-asset-generator` como devDependency + script `npm run icons` para regenerar PNGs a partir do SVG
 - Storybook ou rota `/dev/components` mais completa (já existe esqueleto em `pages/DevComponents`)
 - Testes: nenhum até o momento. Vitest + React Testing Library seria o caminho natural
-- i18n: textos estão hardcoded em pt-BR. Trocar para `react-intl` ou similar se a internacionalização entrar no escopo
+- **i18n:** há um scaffold sem dependências em `src/i18n/` (dicionário `pt-BR.ts` + helper `t()` com interpolação `{param}`, mais re-export dos rótulos de enums em `utils/labels.ts`). A migração das strings é **incremental** — o Dashboard já consome `t()`; as demais telas ainda têm texto pt-BR inline. Trocar por `react-intl`/`i18next` só se a internacionalização (outro idioma) entrar no escopo.
 
 **Decisões deliberadas a revisitar**
 - `localStorage` como única persistência: para um produtor sem internet boa, ótimo; para multi-device, vai precisar de sync (Supabase / Firestore / CouchDB)

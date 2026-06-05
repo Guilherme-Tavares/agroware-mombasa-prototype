@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -19,6 +19,7 @@ import Card from '@/components/ui/Card.tsx'
 import Badge from '@/components/ui/Badge.tsx'
 import Button from '@/components/ui/Button.tsx'
 import { greetingByHour, formatGMD } from '@/utils/format.ts'
+import { t } from '@/i18n'
 
 // ─── Counter animation hook ───────────────────────────────────────────────────
 
@@ -112,9 +113,9 @@ function MapPreview() {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-body font-medium text-gray-900">Mapa da Fazenda</h3>
+        <h3 className="text-body font-medium text-gray-900">{t('dashboard.mapTitle')}</h3>
         <Button size="sm" variant="ghost" icon={<Map size={14} />} onClick={() => navigate('/map')}>
-          Ver completo
+          {t('dashboard.mapFull')}
         </Button>
       </div>
 
@@ -201,7 +202,7 @@ function MapPreview() {
         ))}
         <div className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-full bg-alert shrink-0" />
-          <span className="text-caption text-gray-400">Cocho crítico</span>
+          <span className="text-caption text-gray-400">{t('dashboard.criticalTrough')}</span>
         </div>
       </div>
     </div>
@@ -290,15 +291,15 @@ function AlertList() {
         <div className="w-10 h-10 rounded-full bg-ok-bg flex items-center justify-center mb-3">
           <AlertCircle size={20} className="text-ok" />
         </div>
-        <p className="text-body font-medium text-gray-900">Sem alertas</p>
-        <p className="text-caption text-gray-400 mt-1">Todos os cochos e rebanhos estão em dia.</p>
+        <p className="text-body font-medium text-gray-900">{t('dashboard.noAlertsTitle')}</p>
+        <p className="text-caption text-gray-400 mt-1">{t('dashboard.noAlertsBody')}</p>
       </div>
     )
   }
 
   return (
     <div className="flex flex-col h-full">
-      <h3 className="text-body font-medium text-gray-900 mb-3">Alertas e Pendências</h3>
+      <h3 className="text-body font-medium text-gray-900 mb-3">{t('dashboard.alertsTitle')}</h3>
       <div className="flex flex-col gap-2">
         {alerts.map((a, i) => (
           <motion.div
@@ -336,13 +337,16 @@ function AlertList() {
 
 // ─── GMD Chart ────────────────────────────────────────────────────────────────
 
-function buildGMDSeries(days = 30) {
+// Constrói uma série diária de 30 dias ancorada na GMD média real do rebanho
+// ativo. O dataset não guarda pesagens diárias datadas (SeasonPassage agrega em
+// gmd único), então a forma da curva é ilustrativa — mas o nível segue o dado.
+function buildGMDSeries(avgGMD: number, days = 30) {
   const today = new Date()
-  const avgGMD = 0.867
+  const base = avgGMD > 0 ? avgGMD : 0.867
   return Array.from({ length: days }, (_, i) => {
     const d = subDays(today, days - 1 - i)
     const variation = ((i % 7) - 3) * 0.022
-    const gmd = Math.max(0.65, Math.min(1.06, avgGMD + variation))
+    const gmd = Math.max(0.65, Math.min(1.06, base + variation))
     return {
       day: format(d, 'dd/MM', { locale: ptBR }),
       gmd: Number(gmd.toFixed(3)),
@@ -350,17 +354,17 @@ function buildGMDSeries(days = 30) {
   })
 }
 
-const gmdData = buildGMDSeries(30)
-const gmdValues = gmdData.map((d) => d.gmd)
-const gmdAvg  = gmdValues.reduce((s, v) => s + v, 0) / gmdValues.length
-const gmdMax  = Math.max(...gmdValues)
-const gmdMin  = Math.min(...gmdValues)
+function GMDChart({ avgGMD }: { avgGMD: number }) {
+  const gmdData = useMemo(() => buildGMDSeries(avgGMD), [avgGMD])
+  const gmdValues = gmdData.map((d) => d.gmd)
+  const gmdAvg = gmdValues.reduce((s, v) => s + v, 0) / gmdValues.length
+  const gmdMax = Math.max(...gmdValues)
+  const gmdMin = Math.min(...gmdValues)
 
-function GMDChart() {
   return (
     <Card>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-body font-medium text-gray-900">GMD — Últimos 30 dias</h3>
+        <h3 className="text-body font-medium text-gray-900">{t('dashboard.gmdTitle')}</h3>
         <Badge variant="info">kg/dia</Badge>
       </div>
 
@@ -403,9 +407,9 @@ function GMDChart() {
 
       <div className="flex items-center justify-around mt-4 pt-3 border-t border-gray-100">
         {[
-          { label: 'Média',  value: gmdAvg,  accent: 'text-gray-900' },
-          { label: 'Máximo', value: gmdMax,  accent: 'text-primary' },
-          { label: 'Mínimo', value: gmdMin,  accent: 'text-gray-400' },
+          { label: t('dashboard.gmdAvg'), value: gmdAvg,  accent: 'text-gray-900' },
+          { label: t('dashboard.gmdMax'), value: gmdMax,  accent: 'text-primary' },
+          { label: t('dashboard.gmdMin'), value: gmdMin,  accent: 'text-gray-400' },
         ].map(({ label, value, accent }) => (
           <div key={label} className="text-center">
             <p className={`font-data text-body font-medium tabular-nums ${accent}`}>
@@ -438,7 +442,7 @@ function QuickActions() {
   const navigate = useNavigate()
   return (
     <div>
-      <h3 className="text-body font-medium text-gray-900 mb-3">Ações Rápidas</h3>
+      <h3 className="text-body font-medium text-gray-900 mb-3">{t('dashboard.quickActions')}</h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {QUICK_ACTIONS.map(({ icon: Icon, label, path, color }, i) => (
           <motion.button
@@ -469,6 +473,8 @@ export default function Dashboard() {
   const producerName = useAuthStore((s) => s.producerName)
   const farm         = useFarmStore((s) => s.farm)
   const bovines      = useFarmStore((s) => s.bovines)
+  const herds        = useFarmStore((s) => s.herds)
+  const passages     = useFarmStore((s) => s.seasonPassages)
   const alerts       = useAlerts()
 
   const [activeTab, setActiveTab] = useState<'map' | 'alerts'>('map')
@@ -476,8 +482,13 @@ export default function Dashboard() {
   const firstName = producerName.split(' ')[0]
   const greeting  = greetingByHour()
 
-  const totalBovines   = bovines.length
-  const avgGMD         = 0.867
+  // KPIs derivados do dataset expandido (apenas a propriedade ativa).
+  const herdIds        = useMemo(() => new Set(herds.filter((h) => h.farmId === farm?.id).map((h) => h.id)), [herds, farm])
+  const totalBovines   = useMemo(() => bovines.filter((b) => (!b.propertyId || b.propertyId === farm?.id) && b.active !== false).length, [bovines, farm])
+  const avgGMD         = useMemo(() => {
+    const ps = passages.filter((p) => herdIds.has(p.herdId))
+    return ps.length ? ps.reduce((s, p) => s + p.gmd, 0) / ps.length : 0
+  }, [passages, herdIds])
   const activeAlertCount = alerts.length
 
   return (
@@ -505,14 +516,14 @@ export default function Dashboard() {
       {/* ── KPI strip ── */}
       <div className="grid grid-cols-3 gap-3">
         <KPICard
-          label="Total de animais"
+          label={t('dashboard.kpiBovines')}
           value={totalBovines}
           icon={<Beef size={18} />}
           accent="green"
           delay={0.05}
         />
         <KPICard
-          label="GMD médio"
+          label={t('dashboard.kpiGmd')}
           value={avgGMD}
           suffix="kg/dia"
           decimals={3}
@@ -521,7 +532,7 @@ export default function Dashboard() {
           delay={0.1}
         />
         <KPICard
-          label="Alertas ativos"
+          label={t('dashboard.kpiAlerts')}
           value={activeAlertCount}
           icon={<AlertTriangle size={18} />}
           accent={activeAlertCount > 0 ? 'alert' : 'green'}
@@ -544,7 +555,7 @@ export default function Dashboard() {
                   : 'text-gray-400 hover:text-gray-600',
               ].join(' ')}
             >
-              {tab === 'map' ? 'Mapa' : 'Alertas'}
+              {tab === 'map' ? t('dashboard.tabMap') : t('dashboard.tabAlerts')}
             </button>
           ))}
         </div>
@@ -560,7 +571,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── GMD Chart ── */}
-      <GMDChart />
+      <GMDChart avgGMD={avgGMD} />
 
       {/* ── Quick Actions ── */}
       <QuickActions />

@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { differenceInDays, parseISO } from 'date-fns'
 import {
@@ -125,12 +124,14 @@ function DivisionDetail({ id, onClose }: { id: string; onClose: () => void }) {
   const avgWeight   = herdBovines.length > 0
     ? herdBovines.reduce((s, b) => s + b.currentWeight, 0) / herdBovines.length
     : 0
-  const herdGMD = useMemo(() => {
+  // Cálculo direto (sem useMemo): este componente roda após o early return de
+  // `division`, então um hook aqui violaria rules-of-hooks; o custo é trivial.
+  const herdGMD = (() => {
     if (!currentHerd) return null
     const passages = seasonPassages.filter((sp) => sp.herdId === currentHerd.id)
     if (passages.length === 0) return null
     return passages[passages.length - 1].gmd
-  }, [currentHerd, seasonPassages])
+  })()
 
   // Stocking rate
   const forageKey: 'mombaca' | 'brachiaria' | 'other' =

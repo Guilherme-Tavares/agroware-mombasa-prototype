@@ -59,6 +59,9 @@ export default function UsersInvitesList() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-3">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Usuários vinculados</p>
+        {links.length === 0 && (
+          <p className="text-caption text-gray-400">Nenhum usuário vinculado a esta propriedade.</p>
+        )}
         {links.map((up) => {
           const u = usersById.get(up.userId)
           const owner = farm?.ownerId === up.userId

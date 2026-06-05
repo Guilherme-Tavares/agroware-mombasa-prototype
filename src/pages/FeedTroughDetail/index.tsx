@@ -337,13 +337,15 @@ export default function FeedTroughDetail() {
   const [loading, setLoading]           = useState(false)
   const [justFilled, setJustFilled]     = useState(false)
 
-  useEffect(() => {
-    if (trough) {
-      setRefillAmount(trough.capacity)
-      setRefillFeedId(trough.currentFeedId ?? (feeds[0]?.id ?? ''))
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trough?.id])
+  // Inicializa os campos de abastecimento quando o cocho muda — padrão
+  // recomendado de ajuste de estado durante o render (sem efeito) para evitar
+  // renders em cascata.
+  const [syncedTroughId, setSyncedTroughId] = useState<string | undefined>(undefined)
+  if (trough && trough.id !== syncedTroughId) {
+    setSyncedTroughId(trough.id)
+    setRefillAmount(trough.capacity)
+    setRefillFeedId(trough.currentFeedId ?? (feeds[0]?.id ?? ''))
+  }
 
   const timeline = useMemo(
     () => (trough ? buildHPTimeline(trough) : []),

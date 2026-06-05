@@ -65,6 +65,12 @@ export default function StylizedFarmMap({
   // Always call the hook so we have stable refs; the page may also pass its own api
   const internalApi = useMapPanZoom({ viewBoxWidth: VIEWBOX_W, viewBoxHeight: VIEWBOX_H })
   const api = panZoomApi ?? internalApi
+  // Desestrutura para variáveis locais (evita acessos de membro do objeto `api`,
+  // que contém refs, durante o render).
+  const {
+    svgRef, pan, zoom, wasDraggingRef,
+    handlePointerDown, handlePointerMove, handlePointerUp,
+  } = api
 
   // Active herd per division (for herd markers)
   const activeAllocByDivision = useMemo(() => {
@@ -84,19 +90,19 @@ export default function StylizedFarmMap({
   }, [bovines])
 
   const guardedClick = (fn: () => void) => () => {
-    if (api.wasDraggingRef.current) return
+    if (wasDraggingRef.current) return
     fn()
   }
 
   return (
     <svg
-      ref={api.svgRef}
+      ref={svgRef}
       viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
       preserveAspectRatio="xMidYMid meet"
-      onPointerDown={api.handlePointerDown}
-      onPointerMove={api.handlePointerMove}
-      onPointerUp={api.handlePointerUp}
-      onPointerCancel={api.handlePointerUp}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       style={{
         touchAction: 'none',
         userSelect:  'none',
@@ -142,7 +148,7 @@ export default function StylizedFarmMap({
       </defs>
 
       {/* ── Pan/Zoom group ──────────────────────────────────────────────── */}
-      <g transform={`translate(${api.pan.x},${api.pan.y}) scale(${api.zoom})`}>
+      <g transform={`translate(${pan.x},${pan.y}) scale(${zoom})`}>
 
         {/* Layer 0 — Background */}
         <rect x="0" y="0" width={VIEWBOX_W} height={VIEWBOX_H} fill="#EDF1E2" />
