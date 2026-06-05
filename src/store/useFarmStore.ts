@@ -40,6 +40,8 @@ import type { MockData } from '@/data/mockFarm'
 interface FarmState {
   // Conta e acesso
   user: User | null
+  /** Usuário que está operando a sessão (base do modelo de níveis de acesso). */
+  currentUserId: string | null
   users: User[]
   userConfig: UserConfig | null
   userProperties: UserProperty[]
@@ -96,6 +98,8 @@ interface FarmState {
   // ── Ações ──
   seedFromMock: (data: MockData) => void
   setActiveProperty: (propertyId: string) => void
+  updateCurrentUser: (updates: Partial<User>) => void
+  updateUserConfig: (updates: Partial<UserConfig>) => void
   updateFarm: (updates: Partial<Farm>) => void
   addBovine: (bovine: Bovine) => void
   updateBovine: (id: string, updates: Partial<Bovine>) => void
@@ -109,6 +113,7 @@ interface FarmState {
 
 const emptyState = {
   user: null,
+  currentUserId: null,
   users: [],
   userConfig: null,
   userProperties: [],
@@ -155,6 +160,7 @@ export const useFarmStore = create<FarmState>()(
       seedFromMock: (data) =>
         set({
           user: data.user,
+          currentUserId: data.user.id,
           users: data.users,
           userConfig: data.userConfig,
           userProperties: data.userProperties,
@@ -198,6 +204,21 @@ export const useFarmStore = create<FarmState>()(
           const next = state.farms.find((f) => f.id === propertyId)
           return next ? { activePropertyId: propertyId, farm: next } : state
         }),
+
+      updateCurrentUser: (updates) =>
+        set((state) => {
+          if (!state.user) return state
+          const updated = { ...state.user, ...updates }
+          return {
+            user: updated,
+            users: state.users.map((u) => (u.id === updated.id ? updated : u)),
+          }
+        }),
+
+      updateUserConfig: (updates) =>
+        set((state) => ({
+          userConfig: state.userConfig ? { ...state.userConfig, ...updates } : state.userConfig,
+        })),
 
       updateFarm: (updates) =>
         set((state) => {

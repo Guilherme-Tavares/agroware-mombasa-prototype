@@ -9,6 +9,8 @@ import DivisionRegister from '@/pages/DivisionRegister/index.tsx'
 import HerdRegister from '@/pages/HerdRegister/index.tsx'
 import HerdAllocation from '@/pages/HerdAllocation/index.tsx'
 import MapBaseConfig from '@/pages/MapBaseConfig/index.tsx'
+import Profile from '@/pages/Profile/index.tsx'
+import Settings from '@/pages/Settings/index.tsx'
 import FeedTroughDetail from '@/pages/FeedTroughDetail/index.tsx'
 import DevComponents from '@/pages/DevComponents/index.tsx'
 
@@ -38,6 +40,8 @@ export const router = createBrowserRouter([
           { path: 'divisions/new', element: <DivisionRegister /> },
           { path: 'herds/new', element: <HerdRegister /> },
           { path: 'operations/allocation', element: <HerdAllocation /> },
+          { path: 'profile', element: <Profile /> },
+          { path: 'settings', element: <Settings /> },
           { path: 'feed-troughs/:id', element: <FeedTroughDetail /> },
         ],
       },

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Wifi, WifiOff, ChevronRight } from 'lucide-react'
 
 import { useAuthStore } from '@/store/useAuthStore'
+import { useFarmStore } from '@/store/useFarmStore'
 import AgrowareLogo from '@/assets/logo/AgrowareLogo.tsx'
 import PastoralScene from '@/assets/illustrations/PastoralScene.tsx'
 import Input from '@/components/ui/Input.tsx'
@@ -24,6 +25,7 @@ type LoginMode = 'email' | 'offline'
 export default function Login() {
   const navigate = useNavigate()
   const { login, loginOffline } = useAuthStore()
+  const updateCurrentUser = useFarmStore((s) => s.updateCurrentUser)
 
   // Modo offline é o único habilitado no protótipo; o online fica visível porém
   // desabilitado (decisão 5.6 do documento de alinhamento).
@@ -49,6 +51,8 @@ export default function Login() {
     setLoading(true)
     setTimeout(() => {
       loginOffline(name)
+      // Reflete o nome informado no usuário corrente (base do modelo de acesso).
+      updateCurrentUser({ name: name.trim(), email: null, online: false })
       navigate('/', { replace: true })
     }, 500)
   }

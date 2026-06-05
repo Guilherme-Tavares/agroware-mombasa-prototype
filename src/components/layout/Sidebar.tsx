@@ -10,6 +10,7 @@ import {
   Settings,
   HelpCircle,
   LogOut,
+  UserCircle,
   X,
 } from 'lucide-react'
 import { useUIStore } from '@/store/useUIStore'
@@ -130,6 +131,21 @@ export default function Sidebar() {
 
         {/* rodapé */}
         <div className="shrink-0 border-t border-gray-200 px-3 py-3 space-y-0.5">
+          <NavLink
+            to="/profile"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium transition-colors',
+                isActive
+                  ? 'bg-primary-bg text-primary'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+              )
+            }
+          >
+            <UserCircle size={18} aria-hidden="true" />
+            Perfil
+          </NavLink>
+
           <NavLink
             to="/settings"
             className={({ isActive }) =>
