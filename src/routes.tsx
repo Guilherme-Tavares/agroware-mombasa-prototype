@@ -39,6 +39,14 @@ import PropertyList from '@/pages/PropertyList/index.tsx'
 import PropertyDetail from '@/pages/PropertyDetail/index.tsx'
 import UsersInvitesList from '@/pages/UsersInvitesList/index.tsx'
 import Notifications from '@/pages/Notifications/index.tsx'
+import ReportsIndex from '@/pages/reports/ReportsIndex.tsx'
+import ExpenseReport from '@/pages/reports/ExpenseReport.tsx'
+import PurchaseReport from '@/pages/reports/PurchaseReport.tsx'
+import SalesReport from '@/pages/reports/SalesReport.tsx'
+import ApplicationReport from '@/pages/reports/ApplicationReport.tsx'
+import RefillReport from '@/pages/reports/RefillReport.tsx'
+import PerformanceReport from '@/pages/reports/PerformanceReport.tsx'
+import InventoryReport from '@/pages/reports/InventoryReport.tsx'
 import ForageRegister from '@/pages/ForageRegister/index.tsx'
 import ForageList from '@/pages/ForageList/index.tsx'
 import ForageDetail from '@/pages/ForageDetail/index.tsx'
@@ -108,6 +116,14 @@ export const router = createBrowserRouter([
           { path: 'properties/:id/edit', element: <PropertyRegister /> },
           { path: 'users-invites', element: <UsersInvitesList /> },
           { path: 'notifications', element: <Notifications /> },
+          { path: 'reports', element: <ReportsIndex /> },
+          { path: 'reports/expenses', element: <ExpenseReport /> },
+          { path: 'reports/purchases', element: <PurchaseReport /> },
+          { path: 'reports/sales', element: <SalesReport /> },
+          { path: 'reports/applications', element: <ApplicationReport /> },
+          { path: 'reports/refills', element: <RefillReport /> },
+          { path: 'reports/performance', element: <PerformanceReport /> },
+          { path: 'reports/inventory', element: <InventoryReport /> },
           { path: 'divisions', element: <DivisionList /> },
           { path: 'divisions/new', element: <DivisionRegister /> },
           { path: 'divisions/:id', element: <DivisionDetail /> },
