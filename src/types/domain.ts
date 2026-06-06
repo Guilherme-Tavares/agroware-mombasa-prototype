@@ -182,6 +182,8 @@ export interface Herd extends AuditFields {
   purpose: HerdPurpose
   formedAt: string
   notes?: string
+  /** Posição visual no mapa ilustrado (viewBox). Ausente = centroide calculado. */
+  position?: Point
 }
 
 /** bovino. peso_atual_kg e data_ultima_pesagem são cache da última pesagem. */

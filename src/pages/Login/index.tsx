@@ -102,13 +102,13 @@ export default function Login() {
               aria-disabled="true"
               title="Disponível apenas no modo online (indisponível no protótipo)"
               className={[
-                'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-button transition-all duration-200',
+                'flex-1 flex items-center justify-center gap-1 py-2 rounded-md text-button transition-all duration-200',
                 'text-gray-300 cursor-not-allowed opacity-60',
               ].join(' ')}
             >
               <Wifi size={14} />
               Entrar com email
-              <span className="ml-1 text-[9px] font-medium uppercase tracking-wide bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">
+              <span className="text-[9px] font-medium uppercase tracking-wide bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">
                 Online
               </span>
             </button>
@@ -116,7 +116,7 @@ export default function Login() {
               type="button"
               onClick={() => switchMode('offline')}
               className={[
-                'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-button transition-all duration-200',
+                'flex-1 flex items-center justify-center gap-1 py-2 rounded-md text-button transition-all duration-200',
                 mode === 'offline'
                   ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-400 hover:text-gray-600',
@@ -182,10 +182,12 @@ export default function Login() {
                   </p>
                 </div>
                 <Input
+                  id="login-name"
                   label="Seu nome"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  autoComplete="name"
+                  type="text"
+                  autoCapitalize="sentences"
                   required
                 />
                 <Button
@@ -206,7 +208,11 @@ export default function Login() {
             Primeiro acesso?{' '}
             <button
               type="button"
-              onClick={() => switchMode('offline')}
+              onClick={() => {
+                switchMode('offline')
+                // Foca o campo "Seu nome" (abre o teclado no mobile).
+                requestAnimationFrame(() => document.getElementById('login-name')?.focus())
+              }}
               className="text-primary underline underline-offset-2 hover:text-primary-dark transition-colors"
             >
               Informe seu nome e comece offline

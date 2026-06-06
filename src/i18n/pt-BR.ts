@@ -36,7 +36,7 @@ export const ptBR = {
     kpiAlerts:    'Alertas ativos',
     tabMap:       'Mapa',
     tabAlerts:    'Alertas',
-    mapTitle:     'Mapa da Fazenda',
+    mapTitle:     'Mapa da Propriedade',
     mapFull:      'Ver completo',
     criticalTrough: 'Cocho crítico',
     alertsTitle:  'Alertas e Pendências',

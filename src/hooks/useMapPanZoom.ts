@@ -8,6 +8,8 @@ const CLICK_THRESHOLD_PX = 5
 interface UseMapPanZoomOptions {
   viewBoxWidth?:  number
   viewBoxHeight?: number
+  /** Desativa pan/zoom (modo de edição de âncoras, desenho, reposicionamento). */
+  disabled?: boolean
 }
 
 export interface MapPanZoomApi {
@@ -26,6 +28,7 @@ export interface MapPanZoomApi {
 export function useMapPanZoom({
   viewBoxWidth  = 1000,
   viewBoxHeight = 700,
+  disabled      = false,
 }: UseMapPanZoomOptions = {}): MapPanZoomApi {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const [pan, setPan]   = useState<Point>({ x: 0, y: 0 })
@@ -85,6 +88,7 @@ export function useMapPanZoom({
   }, [clientToSVG])
 
   function handlePointerDown(e: React.PointerEvent<SVGSVGElement>) {
+    if (disabled) return
     if (e.button !== undefined && e.button !== 0 && e.pointerType === 'mouse') return
 
     // Fresh interaction → reset drag flag so clicks can fire
@@ -93,7 +97,9 @@ export function useMapPanZoom({
     }
 
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-    try { svgRef.current?.setPointerCapture(e.pointerId) } catch { /* ignore */ }
+    // NÃO capturamos o ponteiro aqui: capturar no pointerdown faz o `click`
+    // ser entregue ao SVG (e não aos marcadores), engolindo o onClick. A captura
+    // só acontece quando um arraste/pinça realmente começa (em handlePointerMove).
 
     if (pointersRef.current.size === 1) {
       isDraggingRef.current = false
@@ -120,11 +126,13 @@ export function useMapPanZoom({
   }
 
   function handlePointerMove(e: React.PointerEvent<SVGSVGElement>) {
+    if (disabled) return
     if (!pointersRef.current.has(e.pointerId)) return
     pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
 
     // Two-finger pinch
     if (pointersRef.current.size === 2 && pinchStateRef.current) {
+      try { svgRef.current?.setPointerCapture(e.pointerId) } catch { /* ignore */ }
       const ptrs = Array.from(pointersRef.current.values())
       const dist = Math.hypot(ptrs[0].x - ptrs[1].x, ptrs[0].y - ptrs[1].y)
       const { initialDist, initialZoom, centerSVG, initialPan } = pinchStateRef.current
@@ -146,6 +154,8 @@ export function useMapPanZoom({
       if (!isDraggingRef.current && Math.hypot(dx, dy) > CLICK_THRESHOLD_PX) {
         isDraggingRef.current = true
         wasDraggingRef.current = true
+        // Captura só agora (arraste confirmado), para não atrapalhar o clique.
+        try { svgRef.current?.setPointerCapture(e.pointerId) } catch { /* ignore */ }
       }
 
       if (isDraggingRef.current) {
@@ -163,6 +173,7 @@ export function useMapPanZoom({
   }
 
   function handlePointerUp(e: React.PointerEvent<SVGSVGElement>) {
+    if (disabled) return
     pointersRef.current.delete(e.pointerId)
     try { svgRef.current?.releasePointerCapture(e.pointerId) } catch { /* ignore */ }
 

@@ -48,4 +48,11 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  // `npm run preview` exposto via Cloudflare quick tunnel: a URL muda a cada
+  // execução, então liberamos todos os subdomínios *.trycloudflare.com (o prefixo
+  // "." cobre o host e qualquer subdomínio). Em produção a app é servida por
+  // Nginx (sem esta checagem), então isto só afeta o teste local tunelado.
+  preview: {
+    allowedHosts: ['.trycloudflare.com'],
+  },
 })

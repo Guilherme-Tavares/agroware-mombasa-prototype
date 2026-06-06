@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 
 import { useFarmStore } from '@/store/useFarmStore'
+import { useToast } from '@/hooks/useToast'
 import type { Point } from '@/types/domain'
 import {
   polygonToPoints, shoelaceArea, polygonPerimeter, distance,
@@ -81,7 +82,9 @@ function StepBadge({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-function IllustratedDemarcation() {
+function IllustratedDemarcation({
+  mode, onModeChange,
+}: { mode: DemarcationMode; onModeChange: (m: DemarcationMode) => void }) {
   const navigate   = useNavigate()
   const farm       = useFarmStore((s) => s.farm)
   const updateFarm = useFarmStore((s) => s.updateFarm)
@@ -485,6 +488,32 @@ function IllustratedDemarcation() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Base layer toggle — bottom-right, igual ao mapa satélite */}
+        {!showModal && (
+          <div className="absolute bottom-6 right-3 z-10 flex rounded-xl bg-white shadow-floating border border-gray-200 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => onModeChange('real')}
+              aria-pressed={mode === 'real'}
+              className={['flex items-center gap-1.5 px-3 py-2 text-button transition-colors',
+                mode === 'real' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-50'].join(' ')}
+            >
+              <Satellite size={14} />
+              <span className="hidden sm:inline">Satélite</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onModeChange('ilustrada')}
+              aria-pressed={mode === 'ilustrada'}
+              className={['flex items-center gap-1.5 px-3 py-2 text-button transition-colors',
+                mode === 'ilustrada' ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-50'].join(' ')}
+            >
+              <Palette size={14} />
+              <span className="hidden sm:inline">Ilustrada</span>
+            </button>
+          </div>
+        )}
       </motion.div>
 
       {/* ── Footer ─────────────────────────────────────────────────────── */}
@@ -613,7 +642,13 @@ function IllustratedDemarcation() {
 
 export default function Demarcation() {
   const navigate = useNavigate()
-  const [mode, setMode] = useState<DemarcationMode>('ilustrada')
+  const toast    = useToast()
+  const [mode, setMode] = useState<DemarcationMode>('real')
+
+  function handleSatelliteFail() {
+    setMode('ilustrada')
+    toast.error('Imagem de satélite indisponível — usando modo ilustrado.')
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -631,45 +666,19 @@ export default function Demarcation() {
         >
           <ChevronLeft size={20} />
         </button>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0">
           <h1 className="text-h1 text-gray-900">Demarcar Propriedade</h1>
           <p className="text-caption text-gray-400 mt-0.5">
             {mode === 'ilustrada'
               ? 'Modo ilustrado — desenho relativo, offline'
-              : 'Sobre o mapa real — captura lat/lng georreferenciada'}
+              : 'Satélite — captura lat/lng georreferenciada'}
           </p>
-        </div>
-        <div className="flex rounded-lg bg-gray-100 p-1 gap-1 shrink-0">
-          <button
-            type="button"
-            onClick={() => setMode('ilustrada')}
-            aria-pressed={mode === 'ilustrada'}
-            className={[
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-button transition-colors',
-              mode === 'ilustrada' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700',
-            ].join(' ')}
-          >
-            <Palette size={14} />
-            <span className="hidden sm:inline">Ilustrada</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('real')}
-            aria-pressed={mode === 'real'}
-            className={[
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-button transition-colors',
-              mode === 'real' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700',
-            ].join(' ')}
-          >
-            <Satellite size={14} />
-            <span className="hidden sm:inline">Mapa real</span>
-          </button>
         </div>
       </motion.div>
 
       {mode === 'ilustrada'
-        ? <IllustratedDemarcation />
-        : <GeoDemarcation onCancel={() => navigate(-1)} />}
+        ? <IllustratedDemarcation mode={mode} onModeChange={setMode} />
+        : <GeoDemarcation onCancel={() => navigate(-1)} onFail={handleSatelliteFail} mode={mode} onModeChange={setMode} />}
     </div>
   )
 }

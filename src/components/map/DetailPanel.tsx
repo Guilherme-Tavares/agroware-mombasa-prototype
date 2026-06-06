@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { differenceInDays, parseISO } from 'date-fns'
 import {
   X, MapPin, Wheat, Users, Activity, Droplets,
   Calendar, Scale, ArrowRight, TrendingUp, History,
+  Pencil, Move, Trash2,
 } from 'lucide-react'
 
 import { useFarmStore } from '@/store/useFarmStore'
@@ -18,6 +20,9 @@ import {
   calculateHPPercentage, calculateRemainingDays, getHPStatus,
 } from '@/utils/hp-system.ts'
 import type { SelectedElement } from './StylizedFarmMap.tsx'
+
+type OnStartEdit = (target: 'farm' | 'division', divisionId?: string) => void
+type OnStartReposition = (elementType: 'herd' | 'trough', elementId: string) => void
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
@@ -97,18 +102,109 @@ function DataRow({ label, value, accent }: { label: string; value: React.ReactNo
   )
 }
 
+// ─── Inline remove confirmation ───────────────────────────────────────────────
+
+function RemoveRow({ message, onConfirm }: { message: string; onConfirm: () => void }) {
+  const [confirming, setConfirming] = useState(false)
+  return confirming ? (
+    <div className="flex flex-col gap-2 mt-1">
+      <p className="text-caption text-gray-500 text-center">{message}</p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setConfirming(false)}
+          className="flex-1 py-2 rounded-lg text-button text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={() => { setConfirming(false); onConfirm() }}
+          className="flex-1 py-2 rounded-lg text-button text-white bg-red-500 hover:bg-red-600 transition-colors"
+        >
+          Remover
+        </button>
+      </div>
+    </div>
+  ) : (
+    <button
+      type="button"
+      onClick={() => setConfirming(true)}
+      className="w-full flex items-center justify-center gap-1.5 py-1.5 text-caption text-gray-400 hover:text-red-500 transition-colors"
+    >
+      <Trash2 size={12} />
+      Remover do mapa
+    </button>
+  )
+}
+
+// ─── Farm detail ──────────────────────────────────────────────────────────────
+
+function FarmDetail({ onClose, onStartEdit }: { onClose: () => void; onStartEdit?: OnStartEdit }) {
+  const farm              = useFarmStore((s) => s.farm)
+  const divisions         = useFarmStore((s) => s.divisions)
+  const herds             = useFarmStore((s) => s.herds)
+  const allocations       = useFarmStore((s) => s.allocations)
+  const removeFarmFromMap = useFarmStore((s) => s.removeFarmFromMap)
+
+  if (!farm) return null
+
+  const activeDivisions = divisions.filter((d) => d.status === 'active').length
+  const activeHerds = allocations.filter((a) => a.active).length
+  const isOnMap = farm.polygon.length >= 3
+
+  return (
+    <div className="flex flex-col h-full">
+      <PanelHeader
+        icon={<MapPin size={20} />}
+        title={farm.name}
+        subtitle={`${farm.city}, ${farm.state}`}
+        onClose={onClose}
+        iconAccent="bg-blue-50 text-blue-700"
+      />
+
+      <div className="flex-1 overflow-y-auto py-4 space-y-5">
+        <Section icon={<Activity size={14} />} title="Dados gerais">
+          <DataRow label="Área total"   value={formatArea(farm.totalArea)} />
+          <DataRow label="Divisões ativas" value={activeDivisions.toString()} />
+          <DataRow label="Rebanhos alocados" value={activeHerds.toString()} />
+          <DataRow label="Lotes registrados" value={herds.length.toString()} />
+        </Section>
+      </div>
+
+      <div className="border-t border-gray-100 pt-4 flex flex-col gap-2">
+        <Button
+          variant="secondary"
+          fullWidth
+          icon={<Pencil size={14} />}
+          onClick={() => { onStartEdit?.('farm'); onClose() }}
+        >
+          Rever demarcação
+        </Button>
+        {isOnMap && (
+          <RemoveRow
+            message="Remove a demarcação da propriedade e de todas as divisões, cochos e rebanhos do mapa."
+            onConfirm={() => { removeFarmFromMap(); onClose() }}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Division detail ──────────────────────────────────────────────────────────
 
-function DivisionDetail({ id, onClose }: { id: string; onClose: () => void }) {
-  const navigate    = useNavigate()
-  const divisions   = useFarmStore((s) => s.divisions)
-  const forages     = useFarmStore((s) => s.forages)
-  const herds       = useFarmStore((s) => s.herds)
-  const bovines     = useFarmStore((s) => s.bovines)
-  const allocations = useFarmStore((s) => s.allocations)
-  const feedTroughs = useFarmStore((s) => s.feedTroughs)
-  const feeds       = useFarmStore((s) => s.feeds)
-  const seasonPassages = useFarmStore((s) => s.seasonPassages)
+function DivisionDetail({ id, onClose, onStartEdit }: { id: string; onClose: () => void; onStartEdit?: OnStartEdit }) {
+  const navigate              = useNavigate()
+  const divisions             = useFarmStore((s) => s.divisions)
+  const forages               = useFarmStore((s) => s.forages)
+  const herds                 = useFarmStore((s) => s.herds)
+  const bovines               = useFarmStore((s) => s.bovines)
+  const allocations           = useFarmStore((s) => s.allocations)
+  const feedTroughs           = useFarmStore((s) => s.feedTroughs)
+  const feeds                 = useFarmStore((s) => s.feeds)
+  const seasonPassages        = useFarmStore((s) => s.seasonPassages)
+  const removeDivisionFromMap = useFarmStore((s) => s.removeDivisionFromMap)
 
   const division = divisions.find((d) => d.id === id)
   if (!division) return null
@@ -262,13 +358,29 @@ function DivisionDetail({ id, onClose }: { id: string; onClose: () => void }) {
       </div>
 
       {/* Footer */}
-      <div className="border-t border-gray-100 pt-4 flex flex-col sm:flex-row gap-2">
-        <Button variant="ghost" fullWidth onClick={() => navigate(`/divisions/new`)}>
-          Editar Divisão
+      <div className="border-t border-gray-100 pt-4 flex flex-col gap-2">
+        <Button
+          variant="secondary"
+          fullWidth
+          icon={<Pencil size={14} />}
+          onClick={() => { onStartEdit?.('division', division.id); onClose() }}
+        >
+          Rever demarcação
         </Button>
-        <Button variant="primary" fullWidth onClick={() => navigate('/operations/allocation')}>
-          Operações
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" fullWidth onClick={() => navigate(`/divisions/new`)}>
+            Editar dados
+          </Button>
+          <Button variant="primary" fullWidth onClick={() => navigate('/operations/allocation')}>
+            Operações
+          </Button>
+        </div>
+        {division.polygon.length >= 3 && (
+          <RemoveRow
+            message="Remove esta divisão do mapa. Cochos e rebanhos dentro dela serão desvinculados."
+            onConfirm={() => { removeDivisionFromMap(division.id); onClose() }}
+          />
+        )}
       </div>
     </div>
   )
@@ -301,14 +413,15 @@ function StockingBar({
 
 // ─── Herd detail ──────────────────────────────────────────────────────────────
 
-function HerdDetail({ id, onClose }: { id: string; onClose: () => void }) {
-  const navigate    = useNavigate()
-  const herds       = useFarmStore((s) => s.herds)
-  const bovines     = useFarmStore((s) => s.bovines)
-  const allocations = useFarmStore((s) => s.allocations)
-  const divisions   = useFarmStore((s) => s.divisions)
-  const seasonPassages = useFarmStore((s) => s.seasonPassages)
-  const seasons     = useFarmStore((s) => s.seasons)
+function HerdDetail({ id, onClose, onStartReposition }: { id: string; onClose: () => void; onStartReposition?: OnStartReposition }) {
+  const navigate          = useNavigate()
+  const herds             = useFarmStore((s) => s.herds)
+  const bovines           = useFarmStore((s) => s.bovines)
+  const allocations       = useFarmStore((s) => s.allocations)
+  const divisions         = useFarmStore((s) => s.divisions)
+  const seasonPassages    = useFarmStore((s) => s.seasonPassages)
+  const seasons           = useFarmStore((s) => s.seasons)
+  const removeHerdFromMap = useFarmStore((s) => s.removeHerdFromMap)
 
   const herd = herds.find((h) => h.id === id)
   if (!herd) return null
@@ -390,19 +503,35 @@ function HerdDetail({ id, onClose }: { id: string; onClose: () => void }) {
         )}
       </div>
 
-      <div className="border-t border-gray-100 pt-4 flex flex-col sm:flex-row gap-2">
-        <Button variant="ghost" fullWidth onClick={() => navigate(`/herds/new`)}>
-          Editar rebanho
-        </Button>
+      <div className="border-t border-gray-100 pt-4 flex flex-col gap-2">
         <Button
-          variant="primary"
+          variant="secondary"
           fullWidth
-          icon={<ArrowRight size={14} />}
-          iconPosition="right"
-          onClick={() => navigate('/operations/allocation')}
+          icon={<Move size={14} />}
+          onClick={() => { onStartReposition?.('herd', herd.id); onClose() }}
         >
-          Lotar / Mover
+          Reposicionar no mapa
         </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" fullWidth onClick={() => navigate(`/herds/new`)}>
+            Editar rebanho
+          </Button>
+          <Button
+            variant="primary"
+            fullWidth
+            icon={<ArrowRight size={14} />}
+            iconPosition="right"
+            onClick={() => navigate('/operations/allocation')}
+          >
+            Lotar / Mover
+          </Button>
+        </div>
+        {activeAlloc && (
+          <RemoveRow
+            message="Remove este rebanho do mapa e encerra a alocação ativa na divisão."
+            onConfirm={() => { removeHerdFromMap(herd.id); onClose() }}
+          />
+        )}
       </div>
     </div>
   )
@@ -410,11 +539,12 @@ function HerdDetail({ id, onClose }: { id: string; onClose: () => void }) {
 
 // ─── Trough detail ────────────────────────────────────────────────────────────
 
-function TroughDetail({ id, onClose }: { id: string; onClose: () => void }) {
-  const navigate     = useNavigate()
-  const feedTroughs  = useFarmStore((s) => s.feedTroughs)
-  const feeds        = useFarmStore((s) => s.feeds)
-  const divisions    = useFarmStore((s) => s.divisions)
+function TroughDetail({ id, onClose, onStartReposition }: { id: string; onClose: () => void; onStartReposition?: OnStartReposition }) {
+  const navigate            = useNavigate()
+  const feedTroughs         = useFarmStore((s) => s.feedTroughs)
+  const feeds               = useFarmStore((s) => s.feeds)
+  const divisions           = useFarmStore((s) => s.divisions)
+  const removeTroughFromMap = useFarmStore((s) => s.removeTroughFromMap)
 
   const trough = feedTroughs.find((t) => t.id === id)
   if (!trough) return null
@@ -506,7 +636,15 @@ function TroughDetail({ id, onClose }: { id: string; onClose: () => void }) {
         )}
       </div>
 
-      <div className="border-t border-gray-100 pt-4">
+      <div className="border-t border-gray-100 pt-4 flex flex-col gap-2">
+        <Button
+          variant="secondary"
+          fullWidth
+          icon={<Move size={14} />}
+          onClick={() => { onStartReposition?.('trough', trough.id); onClose() }}
+        >
+          Reposicionar no mapa
+        </Button>
         <Button
           variant="primary"
           fullWidth
@@ -516,6 +654,12 @@ function TroughDetail({ id, onClose }: { id: string; onClose: () => void }) {
         >
           Abrir Sistema HP completo
         </Button>
+        {trough.divisionId !== '' && (
+          <RemoveRow
+            message="Remove este cocho do mapa e desvincula-o da divisão."
+            onConfirm={() => { removeTroughFromMap(trough.id); onClose() }}
+          />
+        )}
       </div>
     </div>
   )
@@ -524,15 +668,18 @@ function TroughDetail({ id, onClose }: { id: string; onClose: () => void }) {
 // ─── Router ───────────────────────────────────────────────────────────────────
 
 interface DetailPanelProps {
-  selected: SelectedElement
-  onClose:  () => void
+  selected:           SelectedElement
+  onClose:            () => void
+  onStartEdit?:       OnStartEdit
+  onStartReposition?: OnStartReposition
 }
 
-export default function DetailPanel({ selected, onClose }: DetailPanelProps) {
+export default function DetailPanel({ selected, onClose, onStartEdit, onStartReposition }: DetailPanelProps) {
   if (!selected) return null
   switch (selected.type) {
-    case 'division': return <DivisionDetail id={selected.id} onClose={onClose} />
-    case 'herd':     return <HerdDetail     id={selected.id} onClose={onClose} />
-    case 'trough':   return <TroughDetail   id={selected.id} onClose={onClose} />
+    case 'farm':     return <FarmDetail     onClose={onClose} onStartEdit={onStartEdit} />
+    case 'division': return <DivisionDetail id={selected.id} onClose={onClose} onStartEdit={onStartEdit} />
+    case 'herd':     return <HerdDetail     id={selected.id} onClose={onClose} onStartReposition={onStartReposition} />
+    case 'trough':   return <TroughDetail   id={selected.id} onClose={onClose} onStartReposition={onStartReposition} />
   }
 }

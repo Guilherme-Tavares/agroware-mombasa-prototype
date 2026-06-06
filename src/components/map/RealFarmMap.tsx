@@ -1,65 +1,593 @@
-import { useMemo, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import {
-  MapContainer, Polygon, CircleMarker, Tooltip, useMap,
+  MapContainer, Polygon, CircleMarker, Tooltip, useMap, useMapEvent,
 } from 'react-leaflet'
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { calculateHPPercentage, getHPStatus } from '@/utils/hp-system'
-import { TILE_SOURCES, type TileSourceId } from '@/lib/tiles'
+import { polygonsOverlap, pointInPolygon, snapToEdges } from '@/utils/geometry'
+import { TILE_SOURCES } from '@/lib/tiles'
 import OfflineTiles from './OfflineTiles.tsx'
-import type { GeoPoint } from '@/types/domain'
-import type { MapLayers, SelectedElement } from './StylizedFarmMap.tsx'
+import type { GeoPoint, Point, Division } from '@/types/domain'
+import type { MapLayers, SelectedElement, MapMode } from './StylizedFarmMap.tsx'
 
-// ─── Base layer ────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-export type RealBaseLayer = TileSourceId
+export interface RealFarmMapProps {
+  selected:    SelectedElement
+  onSelect:    (sel: SelectedElement) => void
+  layers:      MapLayers
+  className?:  string
+  mapMode:     MapMode
+  onDraftGeoPolygonChange?: (poly: GeoPoint[]) => void
+  onGeoElementReposition?:  (
+    type: 'herd' | 'trough',
+    id:   string,
+    pos:  GeoPoint,
+    divisionId: string,
+  ) => void
+  pendingGeoVertices?: GeoPoint[]
+  onGeoVertexAdd?:    (point: GeoPoint) => void
+  onGeoVertexDelete?: (index: number)   => void
+  onGeoPolygonClose?: ()                => void
+}
 
-// Status → cor (mesmo semáforo do resto do app).
+// ─── Coordinate helpers ───────────────────────────────────────────────────────
+
+type LatLng = [number, number]
+
 const HP_HEX: Record<'ok' | 'warning' | 'alert', string> = {
   ok: '#2E7D32', warning: '#F9A825', alert: '#C62828',
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+function toLatLng(g: GeoPoint): LatLng { return [g.lat, g.lng] }
 
-type LatLng = [number, number]
-
-function toLatLng(g: GeoPoint): LatLng {
-  return [g.lat, g.lng]
-}
-
-function geoCentroid(points: GeoPoint[]): LatLng {
+function geoCentroidLL(points: GeoPoint[]): LatLng {
   const n = points.length || 1
-  const lat = points.reduce((s, p) => s + p.lat, 0) / n
-  const lng = points.reduce((s, p) => s + p.lng, 0) / n
-  return [lat, lng]
+  return [
+    points.reduce((s, p) => s + p.lat, 0) / n,
+    points.reduce((s, p) => s + p.lng, 0) / n,
+  ]
 }
 
-// Ajusta o enquadramento ao contorno da propriedade na montagem e quando o
-// polígono muda. Componente filho porque `useMap` exige estar dentro do mapa.
+function g2p(g: GeoPoint, map: L.Map): Point {
+  const pt = map.latLngToContainerPoint(L.latLng(g.lat, g.lng))
+  return { x: pt.x, y: pt.y }
+}
+
+function p2g(x: number, y: number, map: L.Map): GeoPoint {
+  const ll = map.containerPointToLatLng(L.point(x, y))
+  return { lat: ll.lat, lng: ll.lng }
+}
+
+function geoPolyToPixels(poly: GeoPoint[], map: L.Map): Point[] {
+  return poly.map((g) => g2p(g, map))
+}
+
+function geoPoly2svgPoints(poly: GeoPoint[], map: L.Map): string {
+  return poly.map((g) => { const p = g2p(g, map); return `${p.x},${p.y}` }).join(' ')
+}
+
+function findDivisionAtPixel(
+  x: number, y: number,
+  divs: Division[],
+  map: L.Map,
+): Division | undefined {
+  const pt = { x, y }
+  return divs.find((d) => {
+    if (!d.geoPolygon || d.geoPolygon.length < 3) return false
+    return pointInPolygon(pt, geoPolyToPixels(d.geoPolygon, map))
+  })
+}
+
+
+function distToSegment(p: Point, a: Point, b: Point): number {
+  const dx = b.x - a.x, dy = b.y - a.y
+  const lenSq = dx * dx + dy * dy
+  if (lenSq === 0) return Math.hypot(p.x - a.x, p.y - a.y)
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq))
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
+}
+
+function minDistToPolygon(pt: Point, poly: Point[]): number {
+  let min = Infinity
+  for (let i = 0; i < poly.length; i++) {
+    const d = distToSegment(pt, poly[i], poly[(i + 1) % poly.length])
+    if (d < min) min = d
+  }
+  return min
+}
+
+// ─── FitToFarm ────────────────────────────────────────────────────────────────
+
 function FitToFarm({ polygon }: { polygon: GeoPoint[] }) {
   const map = useMap()
   useEffect(() => {
     if (polygon.length < 3) return
-    const bounds = L.latLngBounds(polygon.map(toLatLng))
-    map.fitBounds(bounds, { padding: [24, 24] })
+    map.fitBounds(L.latLngBounds(polygon.map(toLatLng)), { padding: [24, 24] })
   }, [map, polygon])
   return null
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── LeafletInteractionController ────────────────────────────────────────────
 
-interface RealFarmMapProps {
-  selected: SelectedElement
-  onSelect: (sel: SelectedElement) => void
-  layers: MapLayers
-  baseLayer: RealBaseLayer
-  className?: string
+function LeafletInteractionController({ disabled }: { disabled: boolean }) {
+  const map = useMap()
+  useEffect(() => {
+    if (disabled) {
+      map.dragging.disable()
+      map.scrollWheelZoom.disable()
+      map.touchZoom.disable()
+      map.doubleClickZoom.disable()
+      map.boxZoom.disable()
+    } else {
+      map.dragging.enable()
+      map.scrollWheelZoom.enable()
+      map.touchZoom.enable()
+      map.doubleClickZoom.enable()
+      map.boxZoom.enable()
+    }
+  }, [map, disabled])
+  return null
 }
 
+// ─── FarmClickHandler ─────────────────────────────────────────────────────────
+// Three-zone click logic mirroring the illustrated layer + UX refinements:
+//   1. Inside a division            → ignored (division handler takes it)
+//   2. Inside farm, outside divs    → select farm
+//   3. Outside farm, within margin  → select farm (invisible clickable perimeter)
+//   4. Beyond margin                → ignored
+
+const FARM_CLICK_MARGIN_PX = 120
+
+interface FarmClickHandlerProps {
+  farmGeo:      GeoPoint[]
+  divisions:    Division[]
+  onSelectFarm: () => void
+}
+
+function FarmClickHandler({ farmGeo, divisions, onSelectFarm }: FarmClickHandlerProps) {
+  const map = useMap()
+  useMapEvent('click', (e) => {
+    const px = map.latLngToContainerPoint(e.latlng)
+    const pt = { x: px.x, y: px.y }
+
+    for (const d of divisions) {
+      if (!d.geoPolygon || d.geoPolygon.length < 3) continue
+      if (pointInPolygon(pt, geoPolyToPixels(d.geoPolygon, map))) return
+    }
+
+    if (farmGeo.length < 3) return
+    const farmPx = geoPolyToPixels(farmGeo, map)
+
+    if (pointInPolygon(pt, farmPx)) {
+      onSelectFarm()
+    } else if (minDistToPolygon(pt, farmPx) <= FARM_CLICK_MARGIN_PX) {
+      onSelectFarm()
+    }
+  })
+  return null
+}
+
+// ─── GeoEditAnchorLayer ───────────────────────────────────────────────────────
+
+const GEO_SNAP_PX = 14
+
+interface GeoEditAnchorLayerProps {
+  initialPoly:  GeoPoint[]
+  otherGeoPoly: GeoPoint[][]
+  snapTargets?: GeoPoint[][]
+  onChange:     (poly: GeoPoint[]) => void
+}
+
+function GeoEditAnchorLayer({ initialPoly, otherGeoPoly, snapTargets = [], onChange }: GeoEditAnchorLayerProps) {
+  const map = useMap()
+  const [localPoly, setLocalPoly] = useState<GeoPoint[]>(initialPoly)
+  const [hoveredIdx, setHoveredIdx] = useState(-1)
+  const dragRef = useRef<{
+    idx:          number
+    startClientX: number
+    startClientY: number
+    moved:        boolean
+    origGeo:      GeoPoint
+  } | null>(null)
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
+  const isFirst = useRef(true)
+
+  useEffect(() => {
+    if (isFirst.current) { isFirst.current = false; return }
+    onChangeRef.current(localPoly)
+  }, [localPoly])
+
+  const R = 7
+  const canDelete = localPoly.length > 3
+
+  function handleAnchorDown(e: React.PointerEvent, idx: number) {
+    e.stopPropagation()
+    ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
+    dragRef.current = {
+      idx,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      moved: false,
+      origGeo: localPoly[idx],
+    }
+  }
+
+  function handleAnchorMove(e: React.PointerEvent, idx: number) {
+    if (!dragRef.current || dragRef.current.idx !== idx) return
+    const dx = e.clientX - dragRef.current.startClientX
+    const dy = e.clientY - dragRef.current.startClientY
+    if (!dragRef.current.moved && Math.hypot(dx, dy) < 4) return
+    dragRef.current.moved = true
+    const origPx = g2p(dragRef.current.origGeo, map)
+    let newPx = { x: origPx.x + dx, y: origPx.y + dy }
+    // Snap to nearby edges of farm boundary and adjacent divisions (pixel space)
+    if (snapTargets.length > 0) {
+      newPx = snapToEdges(newPx, snapTargets.map((poly) => geoPolyToPixels(poly, map)), GEO_SNAP_PX)
+    }
+    const newGeo = p2g(newPx.x, newPx.y, map)
+    setLocalPoly((prev) => {
+      const next = [...prev]
+      next[dragRef.current!.idx] = newGeo
+      return next
+    })
+  }
+
+  function handleAnchorUp(idx: number) {
+    if (!dragRef.current || dragRef.current.idx !== idx) return
+    const wasDrag = dragRef.current.moved
+    dragRef.current = null
+    if (!wasDrag && canDelete) {
+      setLocalPoly((prev) => {
+        if (prev.length <= 3) return prev
+        const next = prev.filter((_, i) => i !== idx)
+        const nextPx = geoPolyToPixels(next, map)
+        for (const other of otherGeoPoly) {
+          if (other.length >= 3 && polygonsOverlap(nextPx, geoPolyToPixels(other, map))) return prev
+        }
+        return next
+      })
+    }
+  }
+
+  function handleMidpointClick(e: React.MouseEvent, edgeIdx: number) {
+    e.stopPropagation()
+    const a = localPoly[edgeIdx]
+    const b = localPoly[(edgeIdx + 1) % localPoly.length]
+    const mid: GeoPoint = { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 }
+    setLocalPoly((prev) => {
+      const next = [...prev]
+      next.splice(edgeIdx + 1, 0, mid)
+      return next
+    })
+  }
+
+  const pixelPoly = localPoly.map((g) => g2p(g, map))
+  const pathD = pixelPoly.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x} ${p.y}`).join(' ') + ' Z'
+
+  return (
+    <g>
+      <path d={pathD} fill="rgba(46,125,50,0.15)" stroke="#2E7D32" strokeWidth={2} strokeDasharray="6 4" />
+
+      {pixelPoly.map((p, i) => {
+        const b = pixelPoly[(i + 1) % pixelPoly.length]
+        const mx = (p.x + b.x) / 2
+        const my = (p.y + b.y) / 2
+        return (
+          <g key={`mid-${i}`} onClick={(e) => handleMidpointClick(e, i)} style={{ cursor: 'copy' }}>
+            <rect
+              x={mx - 5} y={my - 5} width={10} height={10}
+              transform={`rotate(45,${mx},${my})`}
+              fill="white" stroke="#2E7D32" strokeWidth={1.5}
+            />
+          </g>
+        )
+      })}
+
+      {pixelPoly.map((p, i) => {
+        const isHov = hoveredIdx === i
+        const showDel = isHov && canDelete
+        return (
+          <g
+            key={`anc-${i}`}
+            onMouseEnter={() => setHoveredIdx(i)}
+            onMouseLeave={() => setHoveredIdx(-1)}
+            style={{ touchAction: 'none' }}
+          >
+            <circle
+              cx={p.x} cy={p.y} r={R}
+              fill={showDel ? '#EF4444' : 'white'}
+              stroke={showDel ? '#B91C1C' : '#2E7D32'}
+              strokeWidth={2}
+              style={{ cursor: showDel ? 'pointer' : 'move' }}
+              onPointerDown={(e) => handleAnchorDown(e, i)}
+              onPointerMove={(e) => handleAnchorMove(e, i)}
+              onPointerUp={() => handleAnchorUp(i)}
+              onClick={(e) => e.stopPropagation()}
+            />
+            {showDel && (
+              <text
+                x={p.x} y={p.y}
+                textAnchor="middle" dominantBaseline="central"
+                fontSize={9} fontWeight="bold" fill="white"
+                style={{ pointerEvents: 'none', userSelect: 'none' }}
+              >×</text>
+            )}
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
+// ─── GeoDrawGuideLayer ────────────────────────────────────────────────────────
+
+interface GeoDrawGuideLayerProps {
+  vertices:      GeoPoint[]
+  cursorGeo:     GeoPoint | null
+  onVertexClick: (index: number) => void
+}
+
+function GeoDrawGuideLayer({ vertices, cursorGeo, onVertexClick }: GeoDrawGuideLayerProps) {
+  const map = useMap()
+  const pixVerts  = vertices.map((g) => g2p(g, map))
+  const pixCursor = cursorGeo ? g2p(cursorGeo, map) : null
+  const canClose  = vertices.length >= 3
+
+  if (pixVerts.length === 0) return null
+
+  const polylineD = pixVerts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x} ${p.y}`).join(' ')
+
+  return (
+    <g>
+      <path d={polylineD} fill="none" stroke="#2E7D32" strokeWidth={2} strokeDasharray="6 4" />
+
+      {pixCursor && pixVerts.length > 0 && (
+        <line
+          x1={pixVerts[pixVerts.length - 1].x} y1={pixVerts[pixVerts.length - 1].y}
+          x2={pixCursor.x} y2={pixCursor.y}
+          stroke="#2E7D32" strokeWidth={1.5} strokeDasharray="4 4" opacity={0.6}
+        />
+      )}
+
+      {canClose && pixCursor && (
+        <line
+          x1={pixVerts[0].x} y1={pixVerts[0].y}
+          x2={pixCursor.x} y2={pixCursor.y}
+          stroke="#2E7D32" strokeWidth={1} strokeDasharray="3 4" opacity={0.35}
+        />
+      )}
+
+      {pixVerts.map((p, i) => {
+        const isV0     = i === 0
+        const showClose = isV0 && canClose
+        const showDel   = !showClose && vertices.length > 1
+        return (
+          <g
+            key={`v-${i}`}
+            onClick={(e) => { e.stopPropagation(); onVertexClick(i) }}
+            style={{ cursor: 'pointer' }}
+          >
+            {showClose ? (
+              <>
+                <circle cx={p.x} cy={p.y} r={10} fill="none" stroke="#16A34A" strokeWidth={2} opacity={0.6} />
+                <circle cx={p.x} cy={p.y} r={6} fill="#16A34A" />
+              </>
+            ) : (
+              <circle
+                cx={p.x} cy={p.y} r={5}
+                fill={showDel ? '#EF4444' : '#2E7D32'}
+                stroke="white" strokeWidth={1.5}
+              />
+            )}
+            {showDel && (
+              <text
+                x={p.x} y={p.y}
+                textAnchor="middle" dominantBaseline="central"
+                fontSize={8} fontWeight="bold" fill="white"
+                style={{ pointerEvents: 'none', userSelect: 'none' }}
+              >×</text>
+            )}
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
+// ─── SatelliteEditOverlay ─────────────────────────────────────────────────────
+
+interface SatelliteEditOverlayProps {
+  mapMode:                  MapMode
+  onDraftGeoPolygonChange?: (poly: GeoPoint[]) => void
+  onGeoElementReposition?:  (type: 'herd' | 'trough', id: string, pos: GeoPoint, divisionId: string) => void
+  pendingGeoVertices?:      GeoPoint[]
+  onGeoVertexAdd?:          (point: GeoPoint) => void
+  onGeoVertexDelete?:       (index: number)   => void
+  onGeoPolygonClose?:       ()                => void
+}
+
+function SatelliteEditOverlay({
+  mapMode, onDraftGeoPolygonChange, onGeoElementReposition,
+  pendingGeoVertices = [], onGeoVertexAdd, onGeoVertexDelete, onGeoPolygonClose,
+}: SatelliteEditOverlayProps) {
+  const map = useMap()
+  const [, setTick] = useState(0)
+  const [cursorGeo, setCursorGeo] = useState<GeoPoint | null>(null)
+
+  const farm      = useFarmStore((s) => s.farm)
+  const divisions = useFarmStore((s) => s.divisions)
+
+  useMapEvent('move', () => setTick((t) => t + 1))
+  useMapEvent('zoom', () => setTick((t) => t + 1))
+
+  const farmGeo = useMemo(() => farm?.geoPolygon ?? [], [farm])
+  const farmDivisions = useMemo(
+    () => divisions.filter((d) => farm && d.farmId === farm.id),
+    [divisions, farm],
+  )
+
+  const editPoly = useMemo<GeoPoint[] | null>(() => {
+    if (mapMode.type !== 'edit-polygon') return null
+    if (mapMode.target === 'farm') return farmGeo.length >= 2 ? farmGeo : null
+    const div = farmDivisions.find((d) => d.id === mapMode.divisionId)
+    return div?.geoPolygon && div.geoPolygon.length >= 2 ? div.geoPolygon : null
+  }, [mapMode, farmGeo, farmDivisions])
+
+  const otherGeoPoly = useMemo<GeoPoint[][]>(() => {
+    if (mapMode.type !== 'edit-polygon' || mapMode.target === 'farm') return []
+    return farmDivisions
+      .filter((d) => d.id !== mapMode.divisionId && (d.geoPolygon?.length ?? 0) >= 3)
+      .map((d) => d.geoPolygon!)
+  }, [mapMode, farmDivisions])
+
+  // Snap targets in edit mode: farm boundary + adjacent division edges
+  const snapTargets = useMemo<GeoPoint[][]>(() => {
+    if (mapMode.type !== 'edit-polygon') return []
+    if (mapMode.target === 'farm') {
+      // Farm anchors snap to division edges so corners align automatically
+      return farmDivisions
+        .filter((d) => (d.geoPolygon?.length ?? 0) >= 3)
+        .map((d) => d.geoPolygon!)
+    }
+    // Division anchors snap to farm boundary + other division edges
+    return [
+      ...(farmGeo.length >= 3 ? [farmGeo] : []),
+      ...farmDivisions
+        .filter((d) => d.id !== mapMode.divisionId && (d.geoPolygon?.length ?? 0) >= 3)
+        .map((d) => d.geoPolygon!),
+    ]
+  }, [mapMode, farmGeo, farmDivisions])
+
+  const isPlacing = mapMode.type === 'place-element' || mapMode.type === 'reposition'
+
+  function handleSvgClick(e: React.MouseEvent) {
+    const rect = (e.currentTarget as SVGElement).getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const geoPoint = p2g(x, y, map)
+
+    if (mapMode.type === 'draw-division') {
+      e.stopPropagation()
+      onGeoVertexAdd?.(geoPoint)
+    } else if (isPlacing) {
+      e.stopPropagation()
+      const div = findDivisionAtPixel(x, y, farmDivisions, map)
+      if (div) {
+        onGeoElementReposition?.(mapMode.elementType, mapMode.elementId, geoPoint, div.id)
+      }
+    }
+  }
+
+  function handleSvgMove(e: React.PointerEvent) {
+    if (mapMode.type !== 'draw-division') return
+    const rect = (e.currentTarget as SVGElement).getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    setCursorGeo(p2g(x, y, map))
+  }
+
+  function handleVertexClick(i: number) {
+    if (i === 0 && pendingGeoVertices.length >= 3) {
+      onGeoPolygonClose?.()
+    } else if (pendingGeoVertices.length > 1) {
+      onGeoVertexDelete?.(i)
+    }
+  }
+
+  const container = map.getContainer()
+
+  return createPortal(
+    <svg
+      style={{
+        position: 'absolute',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: 450,
+        pointerEvents: 'all',
+        touchAction: 'none',
+      }}
+      onClick={handleSvgClick}
+      onPointerMove={handleSvgMove}
+      onPointerLeave={() => setCursorGeo(null)}
+    >
+      {/* Farm boundary reference */}
+      {farmGeo.length >= 3 && (
+        <polygon
+          points={geoPoly2svgPoints(farmGeo, map)}
+          fill="none"
+          stroke="rgba(255,255,255,0.45)"
+          strokeWidth={1.5}
+          strokeDasharray="6 4"
+          style={{ pointerEvents: 'none' }}
+        />
+      )}
+
+      {/* Division outlines */}
+      {farmDivisions.map((d) => {
+        if (!d.geoPolygon || d.geoPolygon.length < 3) return null
+        const isEditing = mapMode.type === 'edit-polygon' && mapMode.divisionId === d.id
+        if (isEditing) return null
+        return (
+          <polygon
+            key={d.id}
+            points={geoPoly2svgPoints(d.geoPolygon, map)}
+            fill={isPlacing ? 'rgba(46,125,50,0.12)' : 'rgba(46,125,50,0.08)'}
+            stroke={isPlacing ? '#2E7D32' : 'rgba(46,125,50,0.55)'}
+            strokeWidth={isPlacing ? 2 : 1.5}
+            strokeDasharray={isPlacing ? '5 3' : undefined}
+            style={{ pointerEvents: 'none' }}
+          />
+        )
+      })}
+
+      {/* Farm edit anchors */}
+      {mapMode.type === 'edit-polygon' && mapMode.target === 'farm' && editPoly && (
+        <GeoEditAnchorLayer
+          key="edit-farm"
+          initialPoly={editPoly}
+          otherGeoPoly={[]}
+          snapTargets={snapTargets}
+          onChange={(poly) => onDraftGeoPolygonChange?.(poly)}
+        />
+      )}
+
+      {/* Division edit anchors */}
+      {mapMode.type === 'edit-polygon' && mapMode.target === 'division' && editPoly && (
+        <GeoEditAnchorLayer
+          key={`edit-div-${mapMode.divisionId}`}
+          initialPoly={editPoly}
+          otherGeoPoly={otherGeoPoly}
+          snapTargets={snapTargets}
+          onChange={(poly) => onDraftGeoPolygonChange?.(poly)}
+        />
+      )}
+
+      {/* Draw guide */}
+      {mapMode.type === 'draw-division' && (
+        <GeoDrawGuideLayer
+          vertices={pendingGeoVertices}
+          cursorGeo={cursorGeo}
+          onVertexClick={handleVertexClick}
+        />
+      )}
+    </svg>,
+    container,
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function RealFarmMap({
-  selected, onSelect, layers, baseLayer, className,
+  selected, onSelect, layers, className, mapMode,
+  onDraftGeoPolygonChange, onGeoElementReposition,
+  pendingGeoVertices, onGeoVertexAdd, onGeoVertexDelete, onGeoPolygonClose,
 }: RealFarmMapProps) {
   const farm        = useFarmStore((s) => s.farm)
   const divisions   = useFarmStore((s) => s.divisions)
@@ -67,112 +595,136 @@ export default function RealFarmMap({
   const allocations = useFarmStore((s) => s.allocations)
   const feedTroughs = useFarmStore((s) => s.feedTroughs)
 
-  // Divisão da alocação ativa de cada rebanho (para posicionar o marcador).
+  const inEditMode = mapMode.type !== 'view'
+
   const activeDivByHerd = useMemo(() => {
-    const map = new Map<string, string>()
-    allocations.filter((a) => a.active).forEach((a) => map.set(a.herdId, a.divisionId))
-    return map
+    const m = new Map<string, string>()
+    allocations.filter((a) => a.active).forEach((a) => m.set(a.herdId, a.divisionId))
+    return m
   }, [allocations])
 
-  const tiles = TILE_SOURCES[baseLayer]
+  const tiles  = TILE_SOURCES['satelite']
   const center: LatLng = farm?.geoCenter ? toLatLng(farm.geoCenter) : [-10.9295, -61.9912]
-  const farmGeo = farm?.geoPolygon ?? []
+  const farmGeo = useMemo(() => farm?.geoPolygon ?? [], [farm])
 
   return (
-    <div className={className}>
+    <div className={`${className ?? ''} isolate`}>
       <MapContainer
         center={center}
         zoom={15}
         scrollWheelZoom
-        zoomControl
+        zoomControl={false}
         className="w-full h-full"
         style={{ background: '#0b1f12' }}
       >
         <OfflineTiles
-          key={baseLayer}
-          sourceId={baseLayer}
+          sourceId="satelite"
           url={tiles.url}
           attribution={tiles.attribution}
           maxZoom={tiles.maxZoom}
         />
 
         {farmGeo.length >= 3 && <FitToFarm polygon={farmGeo} />}
+        <LeafletInteractionController disabled={inEditMode} />
 
-        {/* Contorno da propriedade */}
-        {farmGeo.length >= 3 && (
-          <Polygon
-            positions={farmGeo.map(toLatLng)}
-            pathOptions={{ color: '#FFFFFF', weight: 2, opacity: 0.9, fill: false, dashArray: '6 6' }}
-          />
+        {/* View mode: Leaflet native layers */}
+        {!inEditMode && (
+          <>
+            <FarmClickHandler
+              farmGeo={farmGeo}
+              divisions={divisions}
+              onSelectFarm={() => onSelect({ type: 'farm' })}
+            />
+
+            {farmGeo.length >= 3 && (
+              <>
+                <Polygon
+                  positions={farmGeo.map(toLatLng)}
+                  pathOptions={{ color: '#000000', weight: 6, opacity: 0.45, fill: false, dashArray: '10 6', interactive: false }}
+                />
+                <Polygon
+                  positions={farmGeo.map(toLatLng)}
+                  pathOptions={{ color: '#FFFFFF', weight: 3, opacity: 1, fill: false, dashArray: '10 6', interactive: false }}
+                />
+              </>
+            )}
+
+            {layers.divisions && divisions.map((d) => {
+              if (!d.geoPolygon || d.geoPolygon.length < 3) return null
+              const isSel = selected?.type === 'division' && selected.id === d.id
+              return (
+                <Polygon
+                  key={d.id}
+                  positions={d.geoPolygon.map(toLatLng)}
+                  pathOptions={{
+                    color: isSel ? '#FFFFFF' : '#2E7D32',
+                    weight: isSel ? 3 : 2,
+                    fillColor: '#2E7D32',
+                    fillOpacity: isSel ? 0.35 : 0.18,
+                  }}
+                  eventHandlers={{ click: (e: L.LeafletMouseEvent) => {
+                    ;(e.originalEvent.target as HTMLElement | null)?.blur?.()
+                    onSelect({ type: 'division', id: d.id })
+                  } }}
+                >
+                  <Tooltip direction="center" opacity={0.9}>{d.name}</Tooltip>
+                </Polygon>
+              )
+            })}
+
+            {layers.herds && herds.map((h) => {
+              const divId = activeDivByHerd.get(h.id)
+              const div   = divisions.find((d) => d.id === divId)
+              if (!div?.geoPolygon || div.geoPolygon.length < 3) return null
+              const isSel  = selected?.type === 'herd' && selected.id === h.id
+              const accent = h.purpose === 'engorda' ? '#5D4037' : '#2E7D32'
+              return (
+                <CircleMarker
+                  key={h.id}
+                  center={geoCentroidLL(div.geoPolygon)}
+                  radius={isSel ? 12 : 10}
+                  pathOptions={{ color: '#FFFFFF', weight: 2, fillColor: accent, fillOpacity: 0.95 }}
+                  eventHandlers={{ click: () => onSelect({ type: 'herd', id: h.id }) }}
+                >
+                  <Tooltip direction="top" offset={[0, -8]}>{h.name}</Tooltip>
+                </CircleMarker>
+              )
+            })}
+
+            {layers.troughs && feedTroughs.map((t) => {
+              if (!t.geoPosition) return null
+              const pct    = calculateHPPercentage(t.currentAmount, t.capacity)
+              const status = getHPStatus(pct)
+              const isSel  = selected?.type === 'trough' && selected.id === t.id
+              return (
+                <CircleMarker
+                  key={t.id}
+                  center={toLatLng(t.geoPosition)}
+                  radius={isSel ? 9 : 7}
+                  pathOptions={{ color: '#FFFFFF', weight: 2, fillColor: HP_HEX[status], fillOpacity: 0.95 }}
+                  eventHandlers={{ click: () => onSelect({ type: 'trough', id: t.id }) }}
+                >
+                  <Tooltip direction="top" offset={[0, -6]}>
+                    {t.identifier} · {Math.round(pct)}%
+                  </Tooltip>
+                </CircleMarker>
+              )
+            })}
+          </>
         )}
 
-        {/* Divisões */}
-        {layers.divisions && divisions.map((d) => {
-          if (!d.geoPolygon || d.geoPolygon.length < 3) return null
-          const isSel = selected?.type === 'division' && selected.id === d.id
-          return (
-            <Polygon
-              key={d.id}
-              positions={d.geoPolygon.map(toLatLng)}
-              pathOptions={{
-                color: isSel ? '#FFFFFF' : '#2E7D32',
-                weight: isSel ? 3 : 2,
-                fillColor: '#2E7D32',
-                fillOpacity: isSel ? 0.35 : 0.18,
-              }}
-              eventHandlers={{ click: () => onSelect({ type: 'division', id: d.id }) }}
-            >
-              <Tooltip direction="center" opacity={0.9}>{d.name}</Tooltip>
-            </Polygon>
-          )
-        })}
-
-        {/* Rebanhos (no centroide da divisão alocada) */}
-        {layers.herds && herds.map((h) => {
-          const divId = activeDivByHerd.get(h.id)
-          const div = divisions.find((d) => d.id === divId)
-          if (!div?.geoPolygon || div.geoPolygon.length < 3) return null
-          const isSel = selected?.type === 'herd' && selected.id === h.id
-          const accent = h.purpose === 'engorda' ? '#5D4037' : '#2E7D32'
-          return (
-            <CircleMarker
-              key={h.id}
-              center={geoCentroid(div.geoPolygon)}
-              radius={isSel ? 12 : 10}
-              pathOptions={{
-                color: '#FFFFFF', weight: 2,
-                fillColor: accent, fillOpacity: 0.95,
-              }}
-              eventHandlers={{ click: () => onSelect({ type: 'herd', id: h.id }) }}
-            >
-              <Tooltip direction="top" offset={[0, -8]}>{h.name}</Tooltip>
-            </CircleMarker>
-          )
-        })}
-
-        {/* Cochos */}
-        {layers.troughs && feedTroughs.map((t) => {
-          if (!t.geoPosition) return null
-          const pct = calculateHPPercentage(t.currentAmount, t.capacity)
-          const status = getHPStatus(pct)
-          const isSel = selected?.type === 'trough' && selected.id === t.id
-          return (
-            <CircleMarker
-              key={t.id}
-              center={toLatLng(t.geoPosition)}
-              radius={isSel ? 9 : 7}
-              pathOptions={{
-                color: '#FFFFFF', weight: 2,
-                fillColor: HP_HEX[status], fillOpacity: 0.95,
-              }}
-              eventHandlers={{ click: () => onSelect({ type: 'trough', id: t.id }) }}
-            >
-              <Tooltip direction="top" offset={[0, -6]}>
-                {t.identifier} · {Math.round(pct)}%
-              </Tooltip>
-            </CircleMarker>
-          )
-        })}
+        {/* Edit mode: SVG overlay */}
+        {inEditMode && (
+          <SatelliteEditOverlay
+            mapMode={mapMode}
+            onDraftGeoPolygonChange={onDraftGeoPolygonChange}
+            onGeoElementReposition={onGeoElementReposition}
+            pendingGeoVertices={pendingGeoVertices}
+            onGeoVertexAdd={onGeoVertexAdd}
+            onGeoVertexDelete={onGeoVertexDelete}
+            onGeoPolygonClose={onGeoPolygonClose}
+          />
+        )}
       </MapContainer>
     </div>
   )

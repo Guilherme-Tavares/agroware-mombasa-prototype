@@ -2,13 +2,13 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, Minus, Maximize2, Layers,
-  Satellite, Map as MapIcon, Palette, Beef, Droplets, Wheat,
+  Satellite, Palette, Beef, Droplets, Wheat,
   Grid3x3,
 } from 'lucide-react'
 import type { MapLayers } from './StylizedFarmMap.tsx'
 
-/** Camada base do mapa: ilustrada (SVG), satélite (Esri) ou ruas (OSM). */
-export type MapBaseLayer = 'ilustrada' | 'satelite' | 'mapa'
+/** Camada base do mapa: ilustrada (SVG) ou satélite (Esri). */
+export type MapBaseLayer = 'ilustrada' | 'satelite'
 
 // ─── Zoom controls (top-right) ────────────────────────────────────────────────
 
@@ -142,9 +142,8 @@ interface MapStyleToggleProps {
 }
 
 const BASE_ITEMS: Array<{ key: MapBaseLayer; label: string; icon: React.ReactNode }> = [
-  { key: 'ilustrada', label: 'Ilustrada', icon: <Palette   size={14} /> },
   { key: 'satelite',  label: 'Satélite',  icon: <Satellite size={14} /> },
-  { key: 'mapa',      label: 'Mapa',      icon: <MapIcon   size={14} /> },
+  { key: 'ilustrada', label: 'Ilustrada', icon: <Palette   size={14} /> },
 ]
 
 export function MapStyleToggle({ base, onChange }: MapStyleToggleProps) {

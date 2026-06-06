@@ -295,6 +295,10 @@ interface FarmState {
   addSaleLot: (lot: SaleLot, bovineIds: string[]) => void
   updateSaleLot: (id: string, updates: Partial<SaleLot>) => void
   registerSale: (sale: Sale) => void
+  removeDivisionFromMap: (divisionId: string) => void
+  removeHerdFromMap: (herdId: string) => void
+  removeTroughFromMap: (troughId: string) => void
+  removeFarmFromMap: () => void
 }
 
 const emptyState = {
@@ -1039,14 +1043,118 @@ export const useFarmStore = create<FarmState>()(
             ),
           }
         }),
+
+      // Remove a divisão do mapa: limpa o polígono, desvincula os cochos e
+      // encerra as alocações ativas — o registro da divisão permanece intacto.
+      removeDivisionFromMap: (divisionId) =>
+        set((state) => {
+          const today = new Date().toISOString().split('T')[0]
+          return {
+            divisions: state.divisions.map((d) =>
+              d.id === divisionId ? { ...d, polygon: [], geoPolygon: undefined } : d,
+            ),
+            feedTroughs: state.feedTroughs.map((t) =>
+              t.divisionId === divisionId
+                ? { ...t, divisionId: '', position: { x: 0, y: 0 }, geoPosition: undefined }
+                : t,
+            ),
+            allocations: state.allocations.map((a) =>
+              a.divisionId === divisionId && a.active
+                ? { ...a, active: false, endDate: today }
+                : a,
+            ),
+          }
+        }),
+
+      // Remove o rebanho do mapa: limpa a posição e encerra a alocação ativa.
+      removeHerdFromMap: (herdId) =>
+        set((state) => {
+          const today = new Date().toISOString().split('T')[0]
+          return {
+            herds: state.herds.map((h) =>
+              h.id === herdId ? { ...h, position: undefined } : h,
+            ),
+            allocations: state.allocations.map((a) =>
+              a.herdId === herdId && a.active
+                ? { ...a, active: false, endDate: today }
+                : a,
+            ),
+          }
+        }),
+
+      // Remove o cocho do mapa: limpa o vínculo com a divisão e reseta a posição.
+      removeTroughFromMap: (troughId) =>
+        set((state) => ({
+          feedTroughs: state.feedTroughs.map((t) =>
+            t.id === troughId
+              ? { ...t, divisionId: '', position: { x: 0, y: 0 }, geoPosition: undefined }
+              : t,
+          ),
+        })),
+
+      // Remove a propriedade do mapa em cascata: limpa o polígono da fazenda e
+      // de todas as suas divisões, desvincula cochos e encerra todas as alocações.
+      removeFarmFromMap: () =>
+        set((state) => {
+          if (!state.farm) return state
+          const today = new Date().toISOString().split('T')[0]
+          const farmId = state.farm.id
+          const farmDivIds = new Set(
+            state.divisions.filter((d) => d.farmId === farmId).map((d) => d.id),
+          )
+          const updatedFarm = { ...state.farm, polygon: [], geoPolygon: undefined }
+          return {
+            farm: updatedFarm,
+            farms: state.farms.map((f) => (f.id === farmId ? updatedFarm : f)),
+            divisions: state.divisions.map((d) =>
+              d.farmId === farmId ? { ...d, polygon: [], geoPolygon: undefined } : d,
+            ),
+            feedTroughs: state.feedTroughs.map((t) =>
+              farmDivIds.has(t.divisionId)
+                ? { ...t, divisionId: '', position: { x: 0, y: 0 }, geoPosition: undefined }
+                : t,
+            ),
+            allocations: state.allocations.map((a) =>
+              farmDivIds.has(a.divisionId) && a.active
+                ? { ...a, active: false, endDate: today }
+                : a,
+            ),
+          }
+        }),
     }),
     {
       name: 'agroware:farm',
-      // v2: modelo expandido para o escopo consolidado (32 entidades). Estados
-      // persistidos da v1 (12 coleções, Fazenda São José) são descartados para
-      // que `seedIfEmpty` repopule com o dataset novo na próxima carga.
-      version: 2,
-      migrate: () => ({ ...emptyState }) as unknown as FarmState,
+      // v3: re-derives farm.geoPolygon from farm.polygon so illustrated and
+      // satellite demarcations are consistent (fixes stale 9-point mock value).
+      version: 3,
+      migrate: (persistedState: unknown, version: number) => {
+        if (version === 2) {
+          // Preserve all user data; only fix farm.geoPolygon.
+          const state = persistedState as FarmState
+          const f = state.farm
+          if (f?.polygon && f.polygon.length >= 3 && f?.geoPolygon && f.geoPolygon.length >= 3) {
+            const relXs = f.polygon.map((p) => p.x)
+            const relYs = f.polygon.map((p) => p.y)
+            const relXMin = Math.min(...relXs), relXMax = Math.max(...relXs)
+            const relYMin = Math.min(...relYs), relYMax = Math.max(...relYs)
+            const lngs = f.geoPolygon.map((g) => g.lng)
+            const lats = f.geoPolygon.map((g) => g.lat)
+            const lngMin = Math.min(...lngs), lngMax = Math.max(...lngs)
+            const latMin = Math.min(...lats), latMax = Math.max(...lats)
+            if (relXMax > relXMin && relYMax > relYMin && lngMax > lngMin && latMax > latMin) {
+              state.farm = {
+                ...f,
+                geoPolygon: f.polygon.map((p) => ({
+                  lng: lngMin + ((p.x - relXMin) / (relXMax - relXMin)) * (lngMax - lngMin),
+                  lat: latMax - ((p.y - relYMin) / (relYMax - relYMin)) * (latMax - latMin),
+                })),
+              }
+            }
+          }
+          return state
+        }
+        return emptyState as unknown as FarmState
+      },
     },
   ),
 )

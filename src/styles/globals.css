@@ -32,6 +32,7 @@
     outline: 2px solid #2e7d32;
     outline-offset: 2px;
   }
+
 }
 
 @layer components {
@@ -131,4 +132,12 @@
   );
   background-size: 1200px 100%;
   animation: shimmer 1.6s infinite linear;
+}
+
+/* Regras fora de @layer vencem TODOS os @layer independente de especificidade.
+   Browsers como Chrome desenham o focus ring de SVG por mecanismo nativo que
+   ignora regras dentro de @layer — por isso essa regra está aqui, não no @layer base. */
+.leaflet-interactive:focus,
+.leaflet-interactive:focus-visible {
+  outline: none !important;
 }

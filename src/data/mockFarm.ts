@@ -147,6 +147,9 @@ const invitations: Invitation[] = [
 
 const GEO_CENTER = { lat: -10.9295, lng: -61.9912 }
 
+// Geometria retangular: simplifica a validação de âncoras (toda divisão
+// deve ficar dentro desse retângulo) e torna o modelo de demarcação mais
+// didático. Divisões preenhem o retângulo sem lacunas.
 const farm: Farm = {
   id: FARM_ID,
   ownerId: OWNER_ID,
@@ -156,20 +159,10 @@ const farm: Farm = {
   totalArea: 125.5,
   perimeter: 4820,
   polygon: [
-    { x: 80, y: 100 },
-    { x: 220, y: 55 },
-    { x: 420, y: 40 },
-    { x: 620, y: 50 },
-    { x: 800, y: 80 },
-    { x: 920, y: 180 },
-    { x: 940, y: 360 },
-    { x: 900, y: 540 },
-    { x: 780, y: 640 },
-    { x: 580, y: 660 },
-    { x: 380, y: 655 },
-    { x: 200, y: 630 },
-    { x: 90, y: 520 },
-    { x: 65, y: 320 },
+    { x: 80,  y: 80  },
+    { x: 920, y: 80  },
+    { x: 920, y: 620 },
+    { x: 80,  y: 620 },
   ],
   geoCenter: GEO_CENTER,
   geoPolygon: [
@@ -199,12 +192,10 @@ const farm2: Farm = {
   totalArea: 88.0,
   perimeter: 3900,
   polygon: [
-    { x: 120, y: 120 },
-    { x: 700, y: 90 },
-    { x: 880, y: 300 },
-    { x: 760, y: 600 },
-    { x: 240, y: 620 },
-    { x: 90, y: 360 },
+    { x: 120, y: 90  },
+    { x: 880, y: 90  },
+    { x: 880, y: 610 },
+    { x: 120, y: 610 },
   ],
   geoCenter: { lat: -11.1750, lng: -61.9010 },
   mapBaseCapturedAt: null,
@@ -250,6 +241,10 @@ function relativeToGeo(p: Point): GeoPoint {
   }
 }
 
+// farm.geoPolygon mirrors farm.polygon via relativeToGeo so illustrated and
+// satellite shapes are consistent from the first load.
+farm.geoPolygon = farm.polygon.map(relativeToGeo)
+
 // ─── Forragens (catálogo de espécies) ────────────────────────────────────────
 
 const forages: Forage[] = [
@@ -259,13 +254,16 @@ const forages: Forage[] = [
 
 // ─── Divisões (Piquetes) ──────────────────────────────────────────────────────
 
+// Santa Fé: grade 3×2 preenchendo o retângulo (80,80)–(920,620) sem lacunas.
+// Linha superior: 3 piquetes de largura igual (~280 px).
+// Linha inferior: 2 piquetes divididos em ~370 px / ~470 px.
 const divisions: Division[] = [
   {
     id: 'div_01', farmId: FARM_ID, name: 'Piquete 1', area: 5.2, type: 'pasto',
     status: 'active', forageId: 'forage_01', forageStartDate: '2025-03-15',
     polygon: [
-      { x: 680, y: 100 }, { x: 820, y: 130 }, { x: 870, y: 250 },
-      { x: 800, y: 340 }, { x: 650, y: 310 }, { x: 620, y: 200 },
+      { x: 80,  y: 80  }, { x: 360, y: 80  },
+      { x: 360, y: 340 }, { x: 80,  y: 340 },
     ],
     ...audit,
   },
@@ -273,8 +271,8 @@ const divisions: Division[] = [
     id: 'div_02', farmId: FARM_ID, name: 'Piquete 2', area: 4.8, type: 'pasto',
     status: 'active', forageId: 'forage_01', forageStartDate: '2025-04-10',
     polygon: [
-      { x: 360, y: 120 }, { x: 560, y: 100 }, { x: 600, y: 200 },
-      { x: 540, y: 295 }, { x: 380, y: 285 }, { x: 320, y: 210 },
+      { x: 360, y: 80  }, { x: 640, y: 80  },
+      { x: 640, y: 340 }, { x: 360, y: 340 },
     ],
     ...audit,
   },
@@ -282,8 +280,8 @@ const divisions: Division[] = [
     id: 'div_03', farmId: FARM_ID, name: 'Piquete 3', area: 6.0, type: 'pasto',
     status: 'active', forageId: 'forage_01', forageStartDate: '2025-02-20',
     polygon: [
-      { x: 310, y: 305 }, { x: 540, y: 305 }, { x: 640, y: 345 },
-      { x: 670, y: 460 }, { x: 530, y: 510 }, { x: 360, y: 500 }, { x: 255, y: 415 },
+      { x: 640, y: 80  }, { x: 920, y: 80  },
+      { x: 920, y: 340 }, { x: 640, y: 340 },
     ],
     ...audit,
   },
@@ -291,8 +289,8 @@ const divisions: Division[] = [
     id: 'div_04', farmId: FARM_ID, name: 'Piquete 4', area: 3.5, type: 'pasto',
     status: 'active', forageId: 'forage_02', forageStartDate: '2024-11-05',
     polygon: [
-      { x: 90, y: 215 }, { x: 245, y: 185 }, { x: 285, y: 295 },
-      { x: 240, y: 390 }, { x: 100, y: 375 }, { x: 72, y: 290 },
+      { x: 80,  y: 340 }, { x: 450, y: 340 },
+      { x: 450, y: 620 }, { x: 80,  y: 620 },
     ],
     ...audit,
   },
@@ -300,16 +298,44 @@ const divisions: Division[] = [
     id: 'div_05', farmId: FARM_ID, name: 'Piquete 5', area: 8.0, type: 'pasto',
     status: 'active', forageId: 'forage_01', forageStartDate: '2025-08-01',
     polygon: [
-      { x: 100, y: 430 }, { x: 255, y: 420 }, { x: 360, y: 530 }, { x: 460, y: 595 },
-      { x: 590, y: 575 }, { x: 680, y: 515 }, { x: 720, y: 580 }, { x: 600, y: 640 },
-      { x: 380, y: 648 }, { x: 160, y: 620 }, { x: 88, y: 520 },
+      { x: 450, y: 340 }, { x: 920, y: 340 },
+      { x: 920, y: 620 }, { x: 450, y: 620 },
+    ],
+    ...audit,
+  },
+  // Serra Azul: grade L + 2 direita preenchendo (120,90)–(880,610).
+  {
+    id: 'div_sa_01', farmId: FARM_2_ID, name: 'Pasto Norte', area: 12.0, type: 'pasto',
+    status: 'active', forageId: 'forage_02', forageStartDate: '2025-06-01',
+    polygon: [
+      { x: 120, y: 90  }, { x: 500, y: 90  },
+      { x: 500, y: 610 }, { x: 120, y: 610 },
+    ],
+    ...audit,
+  },
+  {
+    id: 'div_sa_02', farmId: FARM_2_ID, name: 'Pasto Leste Superior', area: 8.0, type: 'pasto',
+    status: 'active', forageId: 'forage_01', forageStartDate: '2025-07-15',
+    polygon: [
+      { x: 500, y: 90  }, { x: 880, y: 90  },
+      { x: 880, y: 350 }, { x: 500, y: 350 },
+    ],
+    ...audit,
+  },
+  {
+    id: 'div_sa_03', farmId: FARM_2_ID, name: 'Pasto Leste Inferior', area: 8.0, type: 'pasto',
+    status: 'active', forageId: 'forage_01', forageStartDate: '2025-07-15',
+    polygon: [
+      { x: 500, y: 350 }, { x: 880, y: 350 },
+      { x: 880, y: 610 }, { x: 500, y: 610 },
     ],
     ...audit,
   },
 ]
 
-// Deriva o polígono geográfico de cada divisão a partir do relativo.
-divisions.forEach((d) => {
+// Deriva o polígono geográfico apenas das divisões do Sítio Santa Fé —
+// a projeção relativeToGeo usa o bbox geográfico dessa propriedade.
+divisions.filter((d) => d.farmId === FARM_ID).forEach((d) => {
   d.geoPolygon = d.polygon.map(relativeToGeo)
 })
 
@@ -479,7 +505,7 @@ const feedStocks: FeedStock[] = [
 const feedTroughs: FeedTrough[] = [
   {
     id: 'trough_01', divisionId: 'div_01', identifier: 'C-01', capacity: 200, material: 'concreto',
-    position: { x: 730, y: 175 }, currentAmount: 160, currentFeedId: 'feed_01', consumptionRate: 15,
+    position: { x: 190, y: 145 }, currentAmount: 160, currentFeedId: 'feed_01', consumptionRate: 15,
     lastRefillDate: '2026-05-02',
     refillHistory: [
       { date: '2026-05-02', amount: 200, feedId: 'feed_01', consumptionRate: 15 },
@@ -492,7 +518,7 @@ const feedTroughs: FeedTrough[] = [
   },
   {
     id: 'trough_02', divisionId: 'div_01', identifier: 'C-02', capacity: 200, material: 'concreto',
-    position: { x: 780, y: 265 }, currentAmount: 90, currentFeedId: 'feed_01', consumptionRate: 12,
+    position: { x: 270, y: 260 }, currentAmount: 90, currentFeedId: 'feed_01', consumptionRate: 12,
     lastRefillDate: '2026-04-30',
     refillHistory: [
       { date: '2026-04-30', amount: 200, feedId: 'feed_01', consumptionRate: 12 },
@@ -505,7 +531,7 @@ const feedTroughs: FeedTrough[] = [
   },
   {
     id: 'trough_03', divisionId: 'div_03', identifier: 'C-03', capacity: 250, material: 'plastico',
-    position: { x: 490, y: 405 }, currentAmount: 30, currentFeedId: 'feed_03', consumptionRate: 5,
+    position: { x: 760, y: 185 }, currentAmount: 30, currentFeedId: 'feed_03', consumptionRate: 5,
     lastRefillDate: '2026-04-28',
     refillHistory: [
       { date: '2026-04-28', amount: 250, feedId: 'feed_03', consumptionRate: 5 },
@@ -518,7 +544,7 @@ const feedTroughs: FeedTrough[] = [
   },
   {
     id: 'trough_04', divisionId: 'div_04', identifier: 'C-04', capacity: 150, material: 'metal',
-    position: { x: 175, y: 295 }, currentAmount: 120, currentFeedId: 'feed_02', consumptionRate: 10,
+    position: { x: 200, y: 450 }, currentAmount: 120, currentFeedId: 'feed_02', consumptionRate: 10,
     lastRefillDate: '2026-05-05',
     refillHistory: [
       { date: '2026-05-05', amount: 150, feedId: 'feed_02', consumptionRate: 10 },

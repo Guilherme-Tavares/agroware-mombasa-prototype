@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -91,24 +91,119 @@ function KPICard({ label, value, suffix = '', decimals = 0, icon, accent = 'gree
 
 // ─── Map Preview ──────────────────────────────────────────────────────────────
 
-function MapPreview() {
-  const divisions  = useFarmStore((s) => s.divisions)
-  const farm       = useFarmStore((s) => s.farm)
-  const forages    = useFarmStore((s) => s.forages)
+// Carregado sob demanda: só puxa o Leaflet quando a prévia em satélite renderiza
+// (online), mantendo o Início leve quando offline / em modo ilustrado.
+const SatellitePreview = lazy(() => import('@/components/map/SatellitePreview.tsx'))
+
+const FORAGE_COLOR_MAP: Record<string, string> = {
+  forage_01: '#A5D6A7',
+  forage_02: '#C5E1A5',
+}
+
+function toPoints(polygon: { x: number; y: number }[]) {
+  return polygon.map((p) => `${p.x},${p.y}`).join(' ')
+}
+
+// Fallback ilustrado com viewBox dinâmico: enquadra o bounding box de tudo
+// (propriedade + divisões + cochos) com folga, então sempre contém o contorno
+// independentemente das coordenadas. Os tamanhos fixos (raio do cocho, traço,
+// rótulo) são escalados por `s` para não inflarem/encolherem com o zoom.
+function IllustratedFarmSvg() {
+  const divisions   = useFarmStore((s) => s.divisions)
+  const farm        = useFarmStore((s) => s.farm)
   const feedTroughs = useFarmStore((s) => s.feedTroughs)
-  const navigate   = useNavigate()
 
-  // Division with critical trough
-  const criticalTroughDiv = feedTroughs.find(t => (t.currentAmount / t.capacity) <= 0.2)?.divisionId
+  const criticalTroughDiv = feedTroughs.find((t) => t.currentAmount / t.capacity <= 0.2)?.divisionId
 
-  function toPoints(polygon: { x: number; y: number }[]) {
-    return polygon.map(p => `${p.x},${p.y}`).join(' ')
-  }
+  const allPts = [
+    ...(farm?.polygon ?? []),
+    ...divisions.flatMap((d) => d.polygon),
+    ...feedTroughs.map((t) => t.position),
+  ]
+  const hasPts = allPts.length > 0
+  const xs = allPts.map((p) => p.x)
+  const ys = allPts.map((p) => p.y)
+  const minX = hasPts ? Math.min(...xs) : 0
+  const maxX = hasPts ? Math.max(...xs) : 1000
+  const minY = hasPts ? Math.min(...ys) : 0
+  const maxY = hasPts ? Math.max(...ys) : 700
+  const w = Math.max(1, maxX - minX)
+  const h = Math.max(1, maxY - minY)
+  const pad = Math.max(w, h) * 0.08
+  const vbW = w + 2 * pad
+  const vbH = h + 2 * pad
+  const viewBox = `${minX - pad} ${minY - pad} ${vbW} ${vbH}`
+  const s = Math.max(vbW, vbH) / 1000 // escala dos elementos de tamanho fixo
 
-  const forageColorMap: Record<string, string> = {
-    forage_01: '#A5D6A7',
-    forage_02: '#C5E1A5',
-  }
+  return (
+    <svg viewBox={viewBox} className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+      {farm && (
+        <polygon points={toPoints(farm.polygon)} fill="#D4EDDA" stroke="#A5C9A8" strokeWidth={4 * s} />
+      )}
+
+      {divisions.map((div) => {
+        const fill = div.forageId ? (FORAGE_COLOR_MAP[div.forageId] ?? '#B8DDB5') : '#DCEDC8'
+        const isCritical = div.id === criticalTroughDiv
+        const cx = div.polygon.reduce((a, p) => a + p.x, 0) / div.polygon.length
+        const cy = div.polygon.reduce((a, p) => a + p.y, 0) / div.polygon.length
+        return (
+          <g key={div.id}>
+            <motion.polygon
+              points={toPoints(div.polygon)}
+              fill={fill}
+              stroke="#6EA870"
+              strokeWidth={2 * s}
+              animate={isCritical ? { opacity: [0.55, 0.9, 0.55] } : { opacity: 0.75 }}
+              transition={isCritical ? { duration: 2, repeat: Infinity, ease: 'easeInOut' } : {}}
+            />
+            <text
+              x={cx}
+              y={cy + 4 * s}
+              textAnchor="middle"
+              fontSize={22 * s}
+              fill="#2E7D32"
+              fontWeight="500"
+              fontFamily="Roboto, sans-serif"
+            >
+              {div.name.replace('Piquete ', 'P')}
+            </text>
+          </g>
+        )
+      })}
+
+      {feedTroughs.map((t) => {
+        const pct = t.currentAmount / t.capacity
+        const color = pct <= 0.2 ? '#EF5350' : pct <= 0.5 ? '#FFA726' : '#4CAF50'
+        return (
+          <circle
+            key={t.id}
+            cx={t.position.x}
+            cy={t.position.y}
+            r={12 * s}
+            fill={color}
+            stroke="white"
+            strokeWidth={2 * s}
+            opacity="0.9"
+          />
+        )
+      })}
+    </svg>
+  )
+}
+
+function MapPreview() {
+  const farm     = useFarmStore((s) => s.farm)
+  const forages  = useFarmStore((s) => s.forages)
+  const navigate = useNavigate()
+
+  const farmGeo = farm?.geoPolygon ?? []
+  const [satFailed, setSatFailed] = useState(false)
+  const handleSatFail = useCallback(() => setSatFailed(true), [])
+
+  // Satélite logo de cara (auto-enquadra via fitBounds, proporção real). Cai no
+  // ilustrado se não houver geo, se estiver offline, ou se os tiles falharem.
+  const online = typeof navigator === 'undefined' || navigator.onLine
+  const useSatellite = farmGeo.length >= 3 && online && !satFailed
 
   return (
     <div className="flex flex-col h-full">
@@ -119,74 +214,22 @@ function MapPreview() {
         </Button>
       </div>
 
-      <div className="flex-1 min-h-0 rounded-xl overflow-hidden bg-[#EFF6E8] border border-gray-200">
-        <svg
-          viewBox="0 0 1000 700"
-          className="w-full h-full"
-          style={{ maxHeight: 260 }}
-        >
-          {/* Farm boundary */}
-          {farm && (
-            <polygon
-              points={toPoints(farm.polygon)}
-              fill="#D4EDDA"
-              stroke="#A5C9A8"
-              strokeWidth="4"
-            />
-          )}
-
-          {/* Division polygons */}
-          {divisions.map((div) => {
-            const fill = div.forageId ? (forageColorMap[div.forageId] ?? '#B8DDB5') : '#DCEDC8'
-            const isCritical = div.id === criticalTroughDiv
-            return (
-              <g key={div.id}>
-                <motion.polygon
-                  points={toPoints(div.polygon)}
-                  fill={fill}
-                  stroke="#6EA870"
-                  strokeWidth="2"
-                  animate={isCritical
-                    ? { opacity: [0.55, 0.9, 0.55] }
-                    : { opacity: 0.75 }}
-                  transition={isCritical
-                    ? { duration: 2, repeat: Infinity, ease: 'easeInOut' }
-                    : {}}
-                />
-                {/* Division label — centroid approximation */}
-                <text
-                  x={div.polygon.reduce((s, p) => s + p.x, 0) / div.polygon.length}
-                  y={div.polygon.reduce((s, p) => s + p.y, 0) / div.polygon.length + 4}
-                  textAnchor="middle"
-                  fontSize="22"
-                  fill="#2E7D32"
-                  fontWeight="500"
-                  fontFamily="Roboto, sans-serif"
-                >
-                  {div.name.replace('Piquete ', 'P')}
-                </text>
-              </g>
-            )
-          })}
-
-          {/* Trough markers */}
-          {feedTroughs.map((t) => {
-            const pct = t.currentAmount / t.capacity
-            const color = pct <= 0.2 ? '#EF5350' : pct <= 0.5 ? '#FFA726' : '#4CAF50'
-            return (
-              <circle
-                key={t.id}
-                cx={t.position.x}
-                cy={t.position.y}
-                r="12"
-                fill={color}
-                stroke="white"
-                strokeWidth="2"
-                opacity="0.9"
-              />
-            )
-          })}
-        </svg>
+      <div className="relative h-60 rounded-xl overflow-hidden bg-[#EFF6E8] border border-gray-200">
+        {useSatellite ? (
+          <Suspense fallback={<IllustratedFarmSvg />}>
+            <SatellitePreview onFail={handleSatFail} />
+          </Suspense>
+        ) : (
+          <IllustratedFarmSvg />
+        )}
+        {/* Sobreposição clicável: a prévia inteira abre o mapa completo
+            (o preview é não-interativo, então cobrir não atrapalha nada). */}
+        <button
+          type="button"
+          onClick={() => navigate('/map')}
+          aria-label="Abrir mapa completo"
+          className="absolute inset-0 z-10 cursor-pointer bg-transparent rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        />
       </div>
 
       {/* Legend */}
@@ -195,7 +238,7 @@ function MapPreview() {
           <div key={f.id} className="flex items-center gap-1.5">
             <span
               className="w-3 h-3 rounded-sm shrink-0"
-              style={{ background: forageColorMap[f.id] ?? '#B8DDB5' }}
+              style={{ background: FORAGE_COLOR_MAP[f.id] ?? '#B8DDB5' }}
             />
             <span className="text-caption text-gray-400">{f.name}</span>
           </div>
