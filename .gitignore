@@ -25,3 +25,6 @@ dist-ssr
 
 # Reference artifacts
 reference/
+
+# Placeholders/assets substituídos, guardados localmente para restauração
+unused/

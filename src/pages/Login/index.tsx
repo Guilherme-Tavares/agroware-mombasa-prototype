@@ -6,7 +6,7 @@ import { Wifi, WifiOff, ChevronRight } from 'lucide-react'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useFarmStore } from '@/store/useFarmStore'
 import AgrowareLogo from '@/assets/logo/AgrowareLogo.tsx'
-import PastoralScene from '@/assets/illustrations/PastoralScene.tsx'
+import sceneImg from '@/assets/illustrations/mombasa-scene.png'
 import Input from '@/components/ui/Input.tsx'
 import Button from '@/components/ui/Button.tsx'
 
@@ -65,16 +65,16 @@ export default function Login() {
   return (
     <div className="min-h-svh flex">
       {/* ── Left panel — illustration (desktop only) ───────────────────────── */}
+      {/* A marca "Agroware Mombasa" já vem embutida na imagem, então não há
+          overlay de logo/tagline aqui (evita duplicar a marca). */}
       <div className="hidden lg:flex lg:w-[60%] relative overflow-hidden">
-        <PastoralScene className="absolute inset-0 w-full h-full object-cover" />
-
-        {/* Brand overlay bottom-left */}
-        <div className="absolute bottom-10 left-10 z-10">
-          <AgrowareLogo size={40} variant="wordmark" color="#ffffff" />
-          <p className="mt-2 text-caption text-white/70 max-w-xs">
-            Gestão pecuária offline-first para produtor de médio porte.
-          </p>
-        </div>
+        <img
+          src={sceneImg}
+          alt="Paisagem pecuária ao entardecer com bovinos pastando"
+          // object-left-bottom: ancora o recorte no canto inferior-esquerdo, onde
+          // está a marca "Agroware Mombasa" embutida — assim ela nunca é cortada.
+          className="absolute inset-0 w-full h-full object-cover object-left-bottom"
+        />
       </div>
 
       {/* ── Right panel — form ─────────────────────────────────────────────── */}
@@ -88,9 +88,9 @@ export default function Login() {
           {/* Logo (visible on mobile where illustration is hidden) */}
           <div className="flex flex-col items-center gap-3 lg:items-start">
             <AgrowareLogo size={36} variant="mark" />
-            <div>
-              <h1 className="text-h1 text-gray-900">Bem-vindo ao Agroware</h1>
-              <p className="text-body text-gray-400 mt-0.5">Mombasa</p>
+            <div className="w-full">
+              <h1 className="text-h1 text-gray-900 leading-tight text-center lg:text-left">Bem-vindo ao Agroware</h1>
+              <p className="text-[32px] font-bold tracking-tight text-primary leading-tight text-center lg:text-left mt-0.5">Mombasa</p>
             </div>
           </div>
 

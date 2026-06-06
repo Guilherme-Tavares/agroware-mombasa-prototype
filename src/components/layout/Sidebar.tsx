@@ -171,7 +171,7 @@ export default function Sidebar() {
       >
         {/* logo */}
         <div className="flex items-center justify-between h-[60px] px-4 border-b border-gray-200 shrink-0">
-          <AgrowareLogo size={28} variant="wordmark" />
+          <AgrowareLogo size={30} variant="wordmark" />
           <button
             className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
             onClick={() => setSidebarOpen(false)}

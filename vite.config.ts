@@ -18,19 +18,25 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
-        // Ícone SVG escalável (instalável em navegadores modernos). PNGs raster
-        // 192/512 ficam como melhoria futura para iOS/Android legado — ver README.
+        // Ícones PNG gerados a partir do logo (símbolo sobre fundo branco, com
+        // folga de zona segura para o modo maskable). Ver public/icons/README.md.
         icons: [
           {
-            src: '/icons/icon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
+            src: '/icons/pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
             purpose: 'any',
           },
           {
-            src: '/icons/icon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
+            src: '/icons/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: '/icons/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
             purpose: 'maskable',
           },
         ],

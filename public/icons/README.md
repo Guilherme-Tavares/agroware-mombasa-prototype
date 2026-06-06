@@ -1,43 +1,24 @@
 # Ícones PWA
 
-Este diretório deve conter:
+Gerados a partir do logo do sistema (`src/assets/logo/mombasa-logo.png`):
 
-- `pwa-192x192.png` — usado no manifest e como `apple-touch-icon`
-- `pwa-512x512.png` — usado no manifest e como splash em alguns devices
+- `pwa-192x192.png` — manifest (`purpose: any`) e `apple-touch-icon` (ver `index.html`)
+- `pwa-512x512.png` — manifest (`any` e `maskable`)
 
-## Como gerar
+O favicon da aba do navegador é `public/favicon.png` (64×64), também derivado do logo.
 
-A partir do `source.svg` desta pasta, gere os PNGs com qualquer ferramenta.
-Três opções:
+## Composição
 
-### 1. pwa-asset-generator (recomendado — automatizado)
+Símbolo centrado sobre **fundo branco**, com ~68% da largura do canvas — isso
+deixa a margem de **zona segura** exigida pelo modo *maskable* do Android (o ícone
+é recortado em círculo/squircle). Fundo branco porque o lado verde do símbolo
+desapareceria sobre o verde da marca.
 
-```bash
-npx pwa-asset-generator public/icons/source.svg public/icons \
-  --opaque false \
-  --icon-only \
-  --type png \
-  --background "#2E7D32"
-```
+## Como regenerar
 
-Renomeie os arquivos gerados para `pwa-192x192.png` e `pwa-512x512.png`
-(o gerador usa nomes próprios).
+Ao atualizar o logo em `src/assets/logo/mombasa-logo.png`, regenere os PNGs.
+Qualquer rasterizador serve (pwa-asset-generator, ImageMagick, ou um script com
+`System.Drawing`/`sharp`), mantendo: fundo branco, símbolo centrado a ~68% da
+largura, exportado em 192×192 e 512×512 (e 64×64 para o favicon).
 
-### 2. ImageMagick (CLI direto)
-
-```bash
-magick -background "#2E7D32" -density 384 public/icons/source.svg \
-  -resize 192x192 public/icons/pwa-192x192.png
-
-magick -background "#2E7D32" -density 1024 public/icons/source.svg \
-  -resize 512x512 public/icons/pwa-512x512.png
-```
-
-### 3. Manual
-
-Abra `source.svg` no Figma/Inkscape/Sketch, exporte como PNG em 192×192 e 512×512.
-
-## Por que não estão versionados?
-
-PNGs binários são gerados a partir do SVG, que é a fonte de verdade.
-Quando o logo final for aprovado, atualize `source.svg` e regenere.
+Os SVGs antigos do placeholder "M" ficam em `unused/old-icons/` (fora do versionamento).

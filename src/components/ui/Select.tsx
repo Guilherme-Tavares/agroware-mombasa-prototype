@@ -36,19 +36,6 @@ export default function Select({
 
   return (
     <div className="flex flex-col gap-1">
-      {label && (
-        <label
-          htmlFor={selectId}
-          className={cn(
-            'text-caption font-medium',
-            hasError ? 'text-alert' : 'text-gray-600',
-          )}
-        >
-          {label}
-          {required && <span className="ml-0.5 text-alert">*</span>}
-        </label>
-      )}
-
       <div className="relative">
         <select
           {...props}
@@ -57,9 +44,11 @@ export default function Select({
           disabled={disabled}
           aria-invalid={hasError}
           aria-describedby={helperText || error ? helperId : undefined}
+          // Mesmo "casco" do Input (label flutuante): pt-6/pb-2 quando há label,
+          // para alinhar a altura e a borda quando Select e Input ficam lado a lado.
           className={cn(
-            'block w-full appearance-none rounded-input border bg-white py-2.5 pl-4 pr-10 text-body text-gray-900 transition-all duration-150 outline-none',
-            'min-h-[44px]',
+            'block w-full appearance-none rounded-input border bg-white text-body text-gray-900 transition-all duration-150 outline-none',
+            label ? 'pb-2 pt-6 pl-4 pr-10' : 'py-3 pl-4 pr-10',
             hasError
               ? 'border-alert focus:border-alert focus:ring-1 focus:ring-alert'
               : 'border-gray-200 focus:border-primary focus:ring-1 focus:ring-primary',
@@ -78,6 +67,20 @@ export default function Select({
             </option>
           ))}
         </select>
+
+        {/* Label flutuante fixo no topo (o select sempre exibe valor ou placeholder). */}
+        {label && (
+          <label
+            htmlFor={selectId}
+            className={cn(
+              'pointer-events-none absolute left-4 top-2.5 text-xs font-medium transition-all duration-150',
+              hasError ? 'text-alert' : 'text-primary',
+            )}
+          >
+            {label}
+            {required && <span className="ml-0.5 text-alert">*</span>}
+          </label>
+        )}
 
         <ChevronDown
           size={16}
