@@ -40,7 +40,7 @@ O Agroware Mombasa é um PWA mobile-first que substitui controles manuais por um
 | 8 | Operação de lotação | `/operations/allocation` | ✅ |
 | 9 | Detalhe de cocho (Sistema HP) | `/feed-troughs/:id` | ✅ |
 
-> A tabela acima são as 9 telas de alta fidelidade do protótipo original (Steps 1–4). As fases 5–9 expandiram o app para a suíte completa do escopo: cadastros de todas as entidades, operações com lógica de negócio (pesagem, aplicação sanitária, abastecimento, transferência, vínculos, vendas), camada de consulta (lista + detalhe + edição + remoção reversível) e históricos, financeiro, notificações persistidas e 7 relatórios com export CSV — todas registradas em `src/routes.tsx`.
+> A tabela acima são as 9 telas de alta fidelidade do protótipo original (Steps 1–4). As fases 5–9 expandiram o app para a suíte completa do escopo: cadastros de todas as entidades, operações com lógica de negócio (pesagem, aplicação sanitária, abastecimento, transferência, vínculos, vendas), camada de consulta (lista + detalhe + edição + remoção reversível) e históricos, financeiro, notificações persistidas e 7 relatórios com export CSV, todas registradas em `src/routes.tsx`.
 
 ---
 
@@ -92,7 +92,7 @@ npm run lint
 
 | Tecla | Ação |
 |---|---|
-| `Shift + Ctrl + R` | Reseta todos os dados para o mock da Fazenda São José (em qualquer página, fora de campos de texto) |
+| `Shift + Ctrl + R` | Reseta todos os dados para o mock do Sítio Santa Fé (em qualquer página, fora de campos de texto) |
 | `Esc` | Fecha modal/bottom-sheet aberto |
 
 Para reset programático no console do navegador:
@@ -123,7 +123,7 @@ src/
 │       ├── MapControls.tsx         # ZoomControls, LayerTogglePanel, MapStyleToggle
 │       └── DetailPanel.tsx         # Painel: DivisionDetail, HerdDetail, TroughDetail
 ├── data/
-│   ├── mockFarm.ts                 # Dataset Fazenda São José
+│   ├── mockFarm.ts                 # Dataset mock (Sítio Santa Fé e Sítio Serra Azul)
 │   └── seed.ts                     # seedIfEmpty() + resetToMock()
 ├── hooks/
 │   ├── useResponsive.ts            # isMobile / isTablet / isDesktop
@@ -167,22 +167,24 @@ src/
 
 ## Dataset mock
 
-Todos os dados ficam em `src/data/mockFarm.ts` e são carregados automaticamente no primeiro acesso.
+Todos os dados ficam em `src/data/mockFarm.ts` e são carregados automaticamente no primeiro acesso via `seedIfEmpty()`. O dataset cobre as 32 entidades do modelo de dados com coerência referencial completa.
 
-**Fazenda São José** — Ji-Paraná, RO, 125,5 ha
+**Sítio Santa Fé** (propriedade ativa padrão), Ji-Paraná, RO, 125,5 ha
 
 | Entidade | Quantidade |
 |---|---|
-| Divisões (piquetes) | 5 (27,5 ha totais) |
+| Divisões (piquetes) | 5 |
 | Rebanhos | 3 |
 | Bovinos | 85 (Lote A: 25, Lote B: 40, Lote C: 20) |
 | Cochos | 4 |
 | Temporadas | 3 |
 
-**Alertas pré-configurados:**
-- Cocho C-03 crítico: 30 kg / 250 kg (12%, ~6 dias restantes)
-- Cocho C-02 atenção: 90 kg / 200 kg (45%)
-- Lote B com pesagem atrasada (último registro em 28/03/2026)
+**Sítio Serra Azul** (2ª propriedade), Presidente Médici, RO. Disponível para demonstrar troca de propriedade ativa (RF06) e transferência de bovino (RF33).
+
+**Notificações pré-configuradas:**
+- Cocho C-03 crítico: HP 12% (estoque 30 kg / 250 kg, cerca de 6 dias restantes)
+- Lote B com pesagem atrasada (sem registro há mais de 45 dias)
+- Estoques de medicamento e ração abaixo do mínimo configurado
 
 **Rebanhos e GMDs:**
 
@@ -196,19 +198,19 @@ Todos os dados ficam em `src/data/mockFarm.ts` e são carregados automaticamente
 
 ## Telas implementadas
 
-**Login** — layout dividido com ilustração; modos email/offline; animação de entrada por step.
+**Login.** Layout dividido com ilustração e cena da marca; modos email (desabilitado, modo online) e offline; animação de entrada por step.
 
-**Dashboard** — KPIs animados (count-up via `requestAnimationFrame`), mapa preview com hover, alertas de cocho/pesagem, gráfico GMD por temporada (Recharts).
+**Dashboard.** KPIs animados (count-up via `requestAnimationFrame`), prévia do mapa com fallback ilustrado, alertas de cocho/pesagem, gráfico GMD por temporada (Recharts).
 
-**Mapa Interativo** — SVG inline `viewBox 1000×700` com 6 camadas toggleáveis (divisões, cochos, rebanhos, ar/água, rótulos, trilhas). Pan/zoom unificado mouse+touch via Pointer Events. Painel lateral no desktop, BottomSheet no mobile.
+**Mapa Interativo.** Dois modos de visualização: camada ilustrada (SVG inline `viewBox 1000×700` com 6 camadas toggleáveis, pan/zoom via Pointer Events) e camada satélite (Leaflet + Esri WorldImagery). Satélite é a camada padrão, com fallback automático para a ilustrada quando os tiles não estão disponíveis. Painel lateral no desktop, BottomSheet no mobile.
 
-**Demarcação** — cliques sequenciais sobre o SVG; pins numerados com animação pop; linhas tracejadas com efeito marching ants; cálculo de área via Shoelace; modal de confirmação com perímetro e vértices.
+**Demarcação de propriedade.** Cliques sequenciais sobre o mapa (ilustrado ou satélite); âncoras numeradas com animação pop; linhas tracejadas com marching ants; snap a vértices e arestas existentes; modal de confirmação com área e perímetro calculados.
 
-**Detalhe de Cocho (Sistema HP)** — barra HP animada com `useMotionValue`+`animate()`, pulso em estado crítico, gráfico de evolução (sawtooth) por Recharts, modal de abastecimento com preview e seleção de ração.
+**Detalhe de Cocho (Sistema HP).** Barra HP animada com `useMotionValue` e `animate()`, pulso em estado crítico, gráfico de evolução (sawtooth) por Recharts, modal de abastecimento com preview e seleção de ração.
 
-**Cadastros (Bovino, Divisão, Rebanho)** — template visual compartilhado; validação inline por campo (`touched` + `submitAttempted`); banner de erros animado; submit por Enter (formulário nativo); toast de sucesso + `navigate(-1)`.
+**Cadastros.** Template canônico `FormScreen` compartilhado por todas as entidades; validação inline por campo (`touched` + `submitAttempted`); banner de erros animado; submit por Enter (formulário nativo); toast de sucesso e retorno automático.
 
-**Lotação** — drag-and-drop com `dragSnapToOrigin`; hit-test via `getBoundingClientRect()`; drop-zone com highlight; modal com cálculo de UA/ha resultante e aviso de superlotação; flash verde de confirmação.
+**Lotação.** Drag-and-drop com `dragSnapToOrigin`, hit-test via `getBoundingClientRect()`, drop-zone com highlight, modal com cálculo de UA/ha resultante e aviso de superlotação, flash verde de confirmação.
 
 ---
 
@@ -218,7 +220,7 @@ Todos os dados ficam em `src/data/mockFarm.ts` e são carregados automaticamente
 O protótipo exige funcionamento offline-first. Integrar Google Maps criaria dependência de rede, custo de API e contradiz a premissa central do produto. O mapa é um SVG inline com polígonos clicáveis representando as divisões da propriedade no viewBox 1000×700.
 
 **Pan/zoom via Pointer Events + wheel não-passivo.**
-Um único hook `useMapPanZoom` unifica mouse e touch (incluindo pinch). O listener de `wheel` é registrado via `useEffect` com `{ passive: false }` — necessário para chamar `preventDefault()` e impedir o scroll da página durante o zoom no mapa.
+Um único hook `useMapPanZoom` unifica mouse e touch (incluindo pinch). O listener de `wheel` é registrado via `useEffect` com `{ passive: false }`, necessário para chamar `preventDefault()` e impedir o scroll da página durante o zoom no mapa.
 
 **Drag-and-drop sem biblioteca.**
 A tela de lotação usa apenas Framer Motion `drag` + hit testing manual com `getBoundingClientRect()`. Para 5 divisões, isto é mais leve que adicionar `react-dnd`. `dragSnapToOrigin` simplifica o ciclo: o card sempre volta ao lugar, a atualização visual vem do re-render do store.
@@ -236,7 +238,7 @@ Os bovinos do dataset mock são criados programaticamente em `mockFarm.ts` com v
 Usado como biblioteca standalone (sem o framework adapter do Vite), mantendo a mesma API `createBrowserRouter` + `RouterProvider` familiar do v6 data router.
 
 **Code-splitting por rota (`React.lazy`).**
-As ~85 telas são carregadas sob demanda via `React.lazy` (declaradas em [src/lazyPages.ts](src/lazyPages.ts)); cada uma vira um chunk separado no build. Isso tirou as libs pesadas do bundle inicial — **recharts** (~316 kB) só baixa ao abrir uma tela com gráfico e **Leaflet** (~151 kB) só nas telas de mapa. O bundle de entrada caiu de ~1,4 MB para ~360 kB. Um `<Suspense>` no [AnimatedOutlet](src/components/layout/AnimatedOutlet.tsx) exibe um spinner enquanto o chunk da rota chega (imperceptível em cache/rede local). `Login`, `AppShell` e `ProtectedRoute` ficam eager por serem a porta de entrada / estrutura.
+As ~85 telas são carregadas sob demanda via `React.lazy` (declaradas em [src/lazyPages.ts](src/lazyPages.ts)); cada uma vira um chunk separado no build. Isso tirou as libs pesadas do bundle inicial: **recharts** (~316 kB) só baixa ao abrir uma tela com gráfico e **Leaflet** (~151 kB) só nas telas de mapa. O bundle de entrada caiu de ~1,4 MB para ~360 kB. Um `<Suspense>` no [AnimatedOutlet](src/components/layout/AnimatedOutlet.tsx) exibe um spinner enquanto o chunk da rota chega (imperceptível em cache/rede local). `Login`, `AppShell` e `ProtectedRoute` ficam eager por serem a porta de entrada / estrutura.
 
 **TypeScript 6 com `erasableSyntaxOnly`.**
 A configuração proíbe `enum` e `namespace`. Todos os tipos de domínio usam string literal unions (`'recria' | 'engorda'`) e interfaces, compatíveis com a restrição.
@@ -253,7 +255,7 @@ Captura erros não tratados, exibe a mensagem e oferece dois fallbacks: recarreg
 
 O `vite-plugin-pwa` está configurado com manifest (`lang: pt-BR`), `registerType: 'autoUpdate'` e Workbox. O service worker (`sw.js` + `workbox-*.js`) e o `manifest.webmanifest` são gerados no build.
 
-**Ícone — SVG escalável shippado (instalável em navegadores modernos):**
+**Ícone SVG escalável (instalável em navegadores modernos):**
 
 ```
 public/icons/
@@ -262,7 +264,7 @@ public/icons/
 └── README.md               ← instruções de geração de PNGs
 ```
 
-O manifest referencia `icon.svg` com `sizes: "any"` e `type: "image/svg+xml"`, o que basta para instalação em Chrome/Edge/Firefox atuais. PNGs raster `pwa-192x192.png` / `pwa-512x512.png` continuam **recomendados como melhoria** para máxima compatibilidade (home-screen do iOS e Android legado, que preferem PNG). Veja `public/icons/README.md` para opções de geração (pwa-asset-generator, ImageMagick) — não há rasterizador no projeto, então a geração é um passo manual.
+O manifest referencia `icon.svg` com `sizes: "any"` e `type: "image/svg+xml"`, o que basta para instalação em Chrome/Edge/Firefox atuais. PNGs raster `pwa-192x192.png` / `pwa-512x512.png` continuam **recomendados como melhoria** para máxima compatibilidade (home-screen do iOS e Android legado, que preferem PNG). Veja `public/icons/README.md` para opções de geração (pwa-asset-generator, ImageMagick). Como não há rasterizador no projeto, a geração é um passo manual.
 
 **Verificar Lighthouse PWA score:**
 
@@ -298,7 +300,7 @@ Targets esperados:
 
 - **Vazio:** componente `ui/EmptyState` usado nas ~45 telas de lista, detalhe e histórico; os 7 relatórios tratam tabela vazia inline e desabilitam o export quando não há linhas.
 - **Erro:** `ErrorBoundary` global na raiz (`App.tsx`) com fallback acessível (`role="alert"`), recarregar ou resetar dados.
-- **Carregamento:** o estado vive 100% em stores Zustand com `persist` (rehidratação **síncrona** a partir do `localStorage`) e o dataset é semeado antes do mount — não há fetch assíncrono, então spinners de carregamento são majoritariamente desnecessários. O primitivo `ui/Skeleton` existe para quando dados remotos entrarem no escopo.
+- **Carregamento:** o estado vive 100% em stores Zustand com `persist` (rehidratação **síncrona** a partir do `localStorage`) e o dataset é semeado antes do mount; não há fetch assíncrono, então spinners de carregamento são majoritariamente desnecessários. O primitivo `ui/Skeleton` existe para quando dados remotos entrarem no escopo.
 
 ---
 
@@ -320,12 +322,12 @@ Breakpoints Tailwind padrão: `sm 640`, `md 768`, `lg 1024`, `xl 1280`, `2xl 153
 Itens que poderiam evoluir além do escopo atual:
 
 **Para gerar antes de deploy/demo**
-- PNGs raster `pwa-192x192.png` / `pwa-512x512.png` para iOS/Android legado (o ícone SVG já torna a PWA instalável nos navegadores atuais — ver `public/icons/README.md`)
+- PNGs raster `pwa-192x192.png` / `pwa-512x512.png` para iOS/Android legado (o ícone SVG já torna a PWA instalável nos navegadores atuais; ver `public/icons/README.md`)
 - Screenshots reais para incluir num doc de apresentação
 
 **Para validar manualmente**
-- Lighthouse audit completo (Performance/A11y/BP/PWA) — depende de browser
-- Teste cross-browser (Safari iOS principalmente) — pinch zoom, viewport `100svh`
+- Lighthouse audit completo: Performance, A11y, Best Practices, PWA (requer browser)
+- Teste cross-browser, Safari iOS principalmente: pinch zoom, viewport `100svh`
 - Teste de instalação PWA no Chrome Android e Edge Desktop
 
 **Evoluções razoáveis**
@@ -334,9 +336,9 @@ Itens que poderiam evoluir além do escopo atual:
 - `pwa-asset-generator` como devDependency + script `npm run icons` para regenerar PNGs a partir do SVG
 - Storybook ou rota `/dev/components` mais completa (já existe esqueleto em `pages/DevComponents`)
 - Testes: nenhum até o momento. Vitest + React Testing Library seria o caminho natural
-- **i18n:** há um scaffold sem dependências em `src/i18n/` (dicionário `pt-BR.ts` + helper `t()` com interpolação `{param}`, mais re-export dos rótulos de enums em `utils/labels.ts`). A migração das strings é **incremental** — o Dashboard já consome `t()`; as demais telas ainda têm texto pt-BR inline. Trocar por `react-intl`/`i18next` só se a internacionalização (outro idioma) entrar no escopo.
+- **i18n:** há um scaffold sem dependências em `src/i18n/` (dicionário `pt-BR.ts` + helper `t()` com interpolação `{param}`, mais re-export dos rótulos de enums em `utils/labels.ts`). A migração das strings é **incremental**: o Dashboard já consome `t()`; as demais telas ainda têm texto pt-BR inline. Trocar por `react-intl`/`i18next` só se a internacionalização (outro idioma) entrar no escopo.
 
 **Decisões deliberadas a revisitar**
 - `localStorage` como única persistência: para um produtor sem internet boa, ótimo; para multi-device, vai precisar de sync (Supabase / Firestore / CouchDB)
-- Polígonos de divisão são fixos no mock — a UI atual não permite desenhar/editar polígonos por divisão (só o contorno da fazenda em `/demarcation`)
+- Polígonos de divisão são fixos no mock; a UI atual não permite desenhar/editar polígonos por divisão individualmente (só o contorno da propriedade em `/demarcation`)
 - O dataset não cobre eventos longitudinais (pesagens repetidas no tempo). O GMD é calculado a partir de `SeasonPassage` mas o input é uma única média
