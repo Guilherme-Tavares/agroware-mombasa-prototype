@@ -52,7 +52,10 @@ export default defineConfig({
   // execução, então liberamos todos os subdomínios *.trycloudflare.com (o prefixo
   // "." cobre o host e qualquer subdomínio). Em produção a app é servida por
   // Nginx (sem esta checagem), então isto só afeta o teste local tunelado.
+  server: {
+    allowedHosts: ['dev.mombasa.app'],
+  },
   preview: {
-    allowedHosts: ['.trycloudflare.com'],
+    allowedHosts: ['.trycloudflare.com', 'dev.mombasa.app'],
   },
 })
