@@ -145,36 +145,30 @@ const invitations: Invitation[] = [
 // Sítio Santa Fé, próximo a Ji-Paraná, Rondônia. Polígono ilustrado no
 // viewBox 1000×700; polígono geográfico real plausível para o mapa Leaflet.
 
-const GEO_CENTER = { lat: -10.9295, lng: -61.9912 }
+const GEO_CENTER = { lat: -10.782216145347679, lng: -61.7676694148614 }
 
-// Geometria retangular: simplifica a validação de âncoras (toda divisão
-// deve ficar dentro desse retângulo) e torna o modelo de demarcação mais
-// didático. Divisões preenhem o retângulo sem lacunas.
 const farm: Farm = {
   id: FARM_ID,
   ownerId: OWNER_ID,
   name: 'Sítio Santa Fé',
   city: 'Ji-Paraná',
   state: 'RO',
-  totalArea: 125.5,
-  perimeter: 4820,
+  totalArea: 97.2,
+  perimeter: 4853,
   polygon: [
-    { x: 80,  y: 80  },
-    { x: 920, y: 80  },
-    { x: 920, y: 620 },
-    { x: 80,  y: 620 },
+    { x: 76,  y: 640 },
+    { x: 930, y: 639 },
+    { x: 940, y: 60  },
+    { x: 940, y: 60  },
+    { x: 60,  y: 60  },
   ],
   geoCenter: GEO_CENTER,
   geoPolygon: [
-    { lat: -10.9210, lng: -62.0010 },
-    { lat: -10.9205, lng: -61.9905 },
-    { lat: -10.9215, lng: -61.9805 },
-    { lat: -10.9270, lng: -61.9770 },
-    { lat: -10.9355, lng: -61.9785 },
-    { lat: -10.9395, lng: -61.9865 },
-    { lat: -10.9390, lng: -61.9965 },
-    { lat: -10.9340, lng: -62.0025 },
-    { lat: -10.9260, lng: -62.0035 },
+    { lat: -10.792587470179175, lng: -61.770406642734066 },
+    { lat: -10.792552387885301, lng: -61.7658508801402   },
+    { lat: -10.775310791557718, lng: -61.76579783178139  },
+    { lat: -10.775310791557718, lng: -61.76579783178139  },
+    { lat: -10.775319285558487, lng: -61.77049388786997  },
   ],
   mapBaseCapturedAt: null,
   ...audit,
@@ -241,10 +235,6 @@ function relativeToGeo(p: Point): GeoPoint {
   }
 }
 
-// farm.geoPolygon mirrors farm.polygon via relativeToGeo so illustrated and
-// satellite shapes are consistent from the first load.
-farm.geoPolygon = farm.polygon.map(relativeToGeo)
-
 // ─── Forragens (catálogo de espécies) ────────────────────────────────────────
 
 const forages: Forage[] = [
@@ -254,52 +244,51 @@ const forages: Forage[] = [
 
 // ─── Divisões (Piquetes) ──────────────────────────────────────────────────────
 
-// Santa Fé: grade 3×2 preenchendo o retângulo (80,80)–(920,620) sem lacunas.
-// Linha superior: 3 piquetes de largura igual (~280 px).
-// Linha inferior: 2 piquetes divididos em ~370 px / ~470 px.
 const divisions: Division[] = [
+  // Sítio Santa Fé: 5 piquetes cobrindo (70,60)–(935,638).
+  // Layout: 2 piquetes na linha norte (y 60-350) + 3 na linha sul (y 350-638).
   {
-    id: 'div_01', farmId: FARM_ID, name: 'Piquete 1', area: 5.2, type: 'pasto',
-    status: 'active', forageId: 'forage_01', forageStartDate: '2025-03-15',
+    id: 'div_sf_01', farmId: FARM_ID, name: 'Piquete 1', area: 24.1, type: 'pasto',
+    status: 'active', forageId: 'forage_01', forageStartDate: '2025-10-01',
     polygon: [
-      { x: 80,  y: 80  }, { x: 360, y: 80  },
-      { x: 360, y: 340 }, { x: 80,  y: 340 },
+      { x: 70,  y: 60  }, { x: 500, y: 60  },
+      { x: 500, y: 350 }, { x: 70,  y: 350 },
     ],
     ...audit,
   },
   {
-    id: 'div_02', farmId: FARM_ID, name: 'Piquete 2', area: 4.8, type: 'pasto',
-    status: 'active', forageId: 'forage_01', forageStartDate: '2025-04-10',
+    id: 'div_sf_02', farmId: FARM_ID, name: 'Piquete 2', area: 24.4, type: 'pasto',
+    status: 'active', forageId: 'forage_01', forageStartDate: '2025-10-01',
     polygon: [
-      { x: 360, y: 80  }, { x: 640, y: 80  },
-      { x: 640, y: 340 }, { x: 360, y: 340 },
+      { x: 500, y: 60  }, { x: 935, y: 60  },
+      { x: 935, y: 350 }, { x: 500, y: 350 },
     ],
     ...audit,
   },
   {
-    id: 'div_03', farmId: FARM_ID, name: 'Piquete 3', area: 6.0, type: 'pasto',
-    status: 'active', forageId: 'forage_01', forageStartDate: '2025-02-20',
+    id: 'div_sf_03', farmId: FARM_ID, name: 'Piquete 3', area: 17.8, type: 'pasto',
+    status: 'active', forageId: 'forage_02', forageStartDate: '2025-06-01',
     polygon: [
-      { x: 640, y: 80  }, { x: 920, y: 80  },
-      { x: 920, y: 340 }, { x: 640, y: 340 },
+      { x: 70,  y: 350 }, { x: 390, y: 350 },
+      { x: 390, y: 638 }, { x: 70,  y: 638 },
     ],
     ...audit,
   },
   {
-    id: 'div_04', farmId: FARM_ID, name: 'Piquete 4', area: 3.5, type: 'pasto',
-    status: 'active', forageId: 'forage_02', forageStartDate: '2024-11-05',
+    id: 'div_sf_04', farmId: FARM_ID, name: 'Piquete 4', area: 15.0, type: 'pasto',
+    status: 'active', forageId: 'forage_01', forageStartDate: '2026-01-15',
     polygon: [
-      { x: 80,  y: 340 }, { x: 450, y: 340 },
-      { x: 450, y: 620 }, { x: 80,  y: 620 },
+      { x: 390, y: 350 }, { x: 660, y: 350 },
+      { x: 660, y: 638 }, { x: 390, y: 638 },
     ],
     ...audit,
   },
   {
-    id: 'div_05', farmId: FARM_ID, name: 'Piquete 5', area: 8.0, type: 'pasto',
-    status: 'active', forageId: 'forage_01', forageStartDate: '2025-08-01',
+    id: 'div_sf_05', farmId: FARM_ID, name: 'Piquete 5', area: 15.3, type: 'pasto',
+    status: 'active', forageId: 'forage_01', forageStartDate: '2026-01-15',
     polygon: [
-      { x: 450, y: 340 }, { x: 920, y: 340 },
-      { x: 920, y: 620 }, { x: 450, y: 620 },
+      { x: 660, y: 350 }, { x: 935, y: 350 },
+      { x: 930, y: 638 }, { x: 660, y: 638 },
     ],
     ...audit,
   },
@@ -501,73 +490,74 @@ const feedStocks: FeedStock[] = [
 ]
 
 // ─── Cochos ─────────────────────────────────────────────────────────────────
+// Um cocho de sal mineral por piquete, posicionado no centro visual de cada um.
 
 const feedTroughs: FeedTrough[] = [
   {
-    id: 'trough_01', divisionId: 'div_01', identifier: 'C-01', capacity: 200, material: 'concreto',
-    position: { x: 190, y: 145 }, currentAmount: 160, currentFeedId: 'feed_01', consumptionRate: 15,
-    lastRefillDate: '2026-05-02',
-    refillHistory: [
-      { date: '2026-05-02', amount: 200, feedId: 'feed_01', consumptionRate: 15 },
-      { date: '2026-04-19', amount: 180, feedId: 'feed_01', consumptionRate: 15 },
-      { date: '2026-04-07', amount: 200, feedId: 'feed_01', consumptionRate: 15 },
-      { date: '2026-03-25', amount: 190, feedId: 'feed_01', consumptionRate: 15 },
-      { date: '2026-03-12', amount: 200, feedId: 'feed_01', consumptionRate: 15 },
-    ],
+    id: 'trough_sf_01', divisionId: 'div_sf_01',
+    identifier: 'Cocho P1',
+    capacity: 200, material: 'concreto',
+    position: { x: 355, y: 250 },
+    currentAmount: 120, currentFeedId: 'feed_03',
+    consumptionRate: 5, lastRefillDate: '2026-06-01',
+    refillHistory: [],
     ...audit,
   },
   {
-    id: 'trough_02', divisionId: 'div_01', identifier: 'C-02', capacity: 200, material: 'concreto',
-    position: { x: 270, y: 260 }, currentAmount: 90, currentFeedId: 'feed_01', consumptionRate: 12,
-    lastRefillDate: '2026-04-30',
-    refillHistory: [
-      { date: '2026-04-30', amount: 200, feedId: 'feed_01', consumptionRate: 12 },
-      { date: '2026-04-14', amount: 185, feedId: 'feed_01', consumptionRate: 12 },
-      { date: '2026-03-31', amount: 200, feedId: 'feed_01', consumptionRate: 12 },
-      { date: '2026-03-17', amount: 190, feedId: 'feed_01', consumptionRate: 12 },
-      { date: '2026-03-04', amount: 200, feedId: 'feed_01', consumptionRate: 12 },
-    ],
+    id: 'trough_sf_02', divisionId: 'div_sf_02',
+    identifier: 'Cocho P2',
+    capacity: 200, material: 'concreto',
+    position: { x: 645, y: 250 },
+    currentAmount: 80, currentFeedId: 'feed_03',
+    consumptionRate: 4, lastRefillDate: '2026-06-01',
+    refillHistory: [],
     ...audit,
   },
   {
-    id: 'trough_03', divisionId: 'div_03', identifier: 'C-03', capacity: 250, material: 'plastico',
-    position: { x: 760, y: 185 }, currentAmount: 30, currentFeedId: 'feed_03', consumptionRate: 5,
-    lastRefillDate: '2026-04-28',
-    refillHistory: [
-      { date: '2026-04-28', amount: 250, feedId: 'feed_03', consumptionRate: 5 },
-      { date: '2026-04-03', amount: 220, feedId: 'feed_03', consumptionRate: 5 },
-      { date: '2026-03-10', amount: 250, feedId: 'feed_03', consumptionRate: 5 },
-      { date: '2026-02-15', amount: 240, feedId: 'feed_03', consumptionRate: 5 },
-      { date: '2026-01-22', amount: 250, feedId: 'feed_03', consumptionRate: 5 },
-    ],
+    id: 'trough_sf_03', divisionId: 'div_sf_03',
+    identifier: 'Cocho P3',
+    capacity: 150, material: 'metal',
+    position: { x: 230, y: 530 },
+    currentAmount: 60, currentFeedId: 'feed_03',
+    consumptionRate: 3, lastRefillDate: '2026-05-28',
+    refillHistory: [],
     ...audit,
   },
   {
-    id: 'trough_04', divisionId: 'div_04', identifier: 'C-04', capacity: 150, material: 'metal',
-    position: { x: 200, y: 450 }, currentAmount: 120, currentFeedId: 'feed_02', consumptionRate: 10,
-    lastRefillDate: '2026-05-05',
-    refillHistory: [
-      { date: '2026-05-05', amount: 150, feedId: 'feed_02', consumptionRate: 10 },
-      { date: '2026-04-20', amount: 140, feedId: 'feed_02', consumptionRate: 10 },
-      { date: '2026-04-06', amount: 150, feedId: 'feed_02', consumptionRate: 10 },
-      { date: '2026-03-23', amount: 145, feedId: 'feed_02', consumptionRate: 10 },
-      { date: '2026-03-09', amount: 150, feedId: 'feed_02', consumptionRate: 10 },
-    ],
+    id: 'trough_sf_04', divisionId: 'div_sf_04',
+    identifier: 'Cocho P4',
+    capacity: 200, material: 'concreto',
+    position: { x: 525, y: 545 },
+    currentAmount: 140, currentFeedId: 'feed_03',
+    consumptionRate: 4, lastRefillDate: '2026-06-03',
+    refillHistory: [],
+    ...audit,
+  },
+  {
+    id: 'trough_sf_05', divisionId: 'div_sf_05',
+    identifier: 'Cocho P5',
+    capacity: 100, material: 'madeira',
+    position: { x: 797, y: 530 },
+    currentAmount: 45, currentFeedId: 'feed_03',
+    consumptionRate: 2, lastRefillDate: '2026-05-30',
+    refillHistory: [],
     ...audit,
   },
 ]
 
-// Deriva a posição geográfica de cada cocho a partir da relativa.
 feedTroughs.forEach((t) => {
-  t.geoPosition = relativeToGeo(t.position)
+  const div = divisions.find((d) => d.id === t.divisionId)
+  if (div?.farmId === FARM_ID) t.geoPosition = relativeToGeo(t.position)
 })
 
 // ─── Lotação ────────────────────────────────────────────────────────────────
+// Lote B (engorda, 40 cab) → P1 | Lote A (recria, 25 cab) → P2 | Lote C (recria, 20 cab) → P4.
+// P3 e P5 em descanso/rotação.
 
 const allocations: Allocation[] = [
-  { id: 'alloc_01', herdId: 'herd_01', divisionId: 'div_01', startDate: '2025-12-10', headCount: 25, ...audit },
-  { id: 'alloc_02', herdId: 'herd_02', divisionId: 'div_03', startDate: '2025-10-15', headCount: 40, ...audit },
-  { id: 'alloc_03', herdId: 'herd_03', divisionId: 'div_04', startDate: '2026-01-20', headCount: 20, ...audit },
+  { id: 'alloc_01', herdId: 'herd_02', divisionId: 'div_sf_01', startDate: '2026-05-01', headCount: 40, ...audit },
+  { id: 'alloc_02', herdId: 'herd_01', divisionId: 'div_sf_02', startDate: '2026-04-20', headCount: 25, ...audit },
+  { id: 'alloc_03', herdId: 'herd_03', divisionId: 'div_sf_04', startDate: '2026-05-15', headCount: 20, ...audit },
 ]
 
 // ─── Transferência de bovino ──────────────────────────────────────────────────
@@ -579,7 +569,7 @@ const bovineTransfers: BovineTransfer[] = [
 // ─── Agenda de tarefas ────────────────────────────────────────────────────────
 
 const tasks: Task[] = [
-  { id: 'task_01', propertyId: FARM_ID, divisionId: 'div_03', title: 'Reparar cerca do Piquete 3', description: 'Mourão caído na divisa leste.', dueDate: '2026-06-10', status: 'pendente', ...audit },
+  { id: 'task_01', propertyId: FARM_ID, title: 'Reparar cerca da propriedade', description: 'Mourão caído na divisa leste.', dueDate: '2026-06-10', status: 'pendente', ...audit },
   { id: 'task_02', propertyId: FARM_ID, herdId: 'herd_02', title: 'Pesar Lote B', description: 'Pesagem atrasada desde 28/03.', dueDate: '2026-06-07', status: 'pendente', ...audit },
   { id: 'task_03', propertyId: FARM_ID, title: 'Cotar preço da arroba', dueDate: '2026-06-06', status: 'concluida', ...audit },
 ]
@@ -596,7 +586,7 @@ const expenseCategories: ExpenseCategory[] = [
 const expenses: Expense[] = [
   { id: 'exp_01', propertyId: FARM_ID, categoryId: 'cat_01', description: 'Compra de 1,5 t de ração 18% PB', amount: 4200, date: '2026-04-25', ...audit },
   { id: 'exp_02', propertyId: FARM_ID, categoryId: 'cat_02', description: 'Ivomec Gold 500 ml', amount: 320, date: '2026-03-01', ...audit },
-  { id: 'exp_03', propertyId: FARM_ID, categoryId: 'cat_03', divisionId: 'div_03', description: 'Reforma de cerca', amount: 1800, date: '2026-02-10', ...audit },
+  { id: 'exp_03', propertyId: FARM_ID, categoryId: 'cat_03', description: 'Reforma de cerca', amount: 1800, date: '2026-02-10', ...audit },
   { id: 'exp_04', propertyId: FARM_ID, categoryId: 'cat_04', description: 'Frete de bezerros', amount: 950, date: '2025-12-08', ...audit },
 ]
 
@@ -620,7 +610,6 @@ const sales: Sale[] = []
 // ─── Notificações (derivadas dos dados) ───────────────────────────────────────
 
 const notifications: Notification[] = [
-  { id: 'notif_01', propertyId: FARM_ID, type: 'cocho_critico', title: 'Cocho C-03 crítico', message: 'Restam 30 kg de 250 kg (12%). Esgotamento em ~6 dias.', severity: 'critico', referenceType: 'feedTrough', referenceId: 'trough_03', resolved: false, ...audit },
   { id: 'notif_02', propertyId: FARM_ID, type: 'pesagem_atrasada', title: 'Pesagem atrasada — Lote B', message: 'Último registro em 28/03/2026.', severity: 'atencao', referenceType: 'herd', referenceId: 'herd_02', resolved: false, ...audit },
   { id: 'notif_03', propertyId: FARM_ID, type: 'estoque_baixo', title: 'Estoque baixo — Ração 16% PB', message: '400 kg abaixo do mínimo de 500 kg.', severity: 'atencao', referenceType: 'feedStock', referenceId: 'feedstock_02', resolved: false, ...audit },
   { id: 'notif_04', propertyId: FARM_ID, type: 'estoque_baixo', title: 'Estoque baixo — Botuvacina', message: '40 doses abaixo do mínimo de 50.', severity: 'atencao', referenceType: 'medicationStock', referenceId: 'medstock_03', resolved: false, ...audit },

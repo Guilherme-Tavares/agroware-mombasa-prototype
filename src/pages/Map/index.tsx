@@ -596,7 +596,7 @@ export default function MapPage() {
 
             {/* Layer toggles (bottom-left) */}
             {!inEditMode && (
-              <div className="absolute bottom-3 left-3 z-10">
+              <div className="absolute bottom-6 left-3 z-10">
                 <LayerTogglePanel layers={layers} onToggle={toggleMapLayer} />
               </div>
             )}

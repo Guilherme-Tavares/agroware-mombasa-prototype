@@ -12,6 +12,9 @@ export interface TileSource {
   label: string
   url: string
   attribution: string
+  /** Zoom máximo que o provedor realmente disponibiliza tiles. */
+  maxNativeZoom: number
+  /** Zoom máximo para cache offline (tilesForBounds). */
   maxZoom: number
   /** Subdomínio fixo para o template {s} (OSM); satélite não usa. */
   subdomain?: string
@@ -23,13 +26,15 @@ export const TILE_SOURCES: Record<TileSourceId, TileSource> = {
     label: 'Satélite',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics',
-    maxZoom: 19,
+    maxNativeZoom: 16,
+    maxZoom: 18,
   },
   mapa: {
     id: 'mapa',
     label: 'Mapa',
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxNativeZoom: 19,
     maxZoom: 19,
     subdomain: 'a',
   },

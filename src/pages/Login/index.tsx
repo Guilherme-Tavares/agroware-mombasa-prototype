@@ -5,6 +5,7 @@ import { Wifi, WifiOff, ChevronRight } from 'lucide-react'
 
 import { useAuthStore } from '@/store/useAuthStore'
 import { useFarmStore } from '@/store/useFarmStore'
+import { useUIStore } from '@/store/useUIStore'
 import AgrowareLogo from '@/assets/logo/AgrowareLogo.tsx'
 import sceneImg from '@/assets/illustrations/mombasa-scene.png'
 import Input from '@/components/ui/Input.tsx'
@@ -26,6 +27,7 @@ export default function Login() {
   const navigate = useNavigate()
   const { login, loginOffline } = useAuthStore()
   const updateCurrentUser = useFarmStore((s) => s.updateCurrentUser)
+  const setSidebarOpen = useUIStore((s) => s.setSidebarOpen)
 
   // Modo offline é o único habilitado no protótipo; o online fica visível porém
   // desabilitado (decisão 5.6 do documento de alinhamento).
@@ -39,9 +41,9 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     setTimeout(() => {
-      // Extract a name from the email prefix or fall back to the default
       const derivedName = email.split('@')[0].replace(/[._-]/g, ' ') || ''
       login(derivedName, email)
+      setSidebarOpen(false)
       navigate('/', { replace: true })
     }, 600)
   }
@@ -51,8 +53,8 @@ export default function Login() {
     setLoading(true)
     setTimeout(() => {
       loginOffline(name)
-      // Reflete o nome informado no usuário corrente (base do modelo de acesso).
       updateCurrentUser({ name: name.trim(), email: null, online: false })
+      setSidebarOpen(false)
       navigate('/', { replace: true })
     }, 500)
   }

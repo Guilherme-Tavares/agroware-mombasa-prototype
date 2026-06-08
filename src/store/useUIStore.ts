@@ -30,7 +30,7 @@ export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
       toasts: [],
-      sidebarOpen: true,
+      sidebarOpen: false,
       activeMapLayers: {
         divisions: true,
         herds: true,

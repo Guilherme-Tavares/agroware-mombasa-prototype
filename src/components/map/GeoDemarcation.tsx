@@ -9,7 +9,7 @@ import { useFarmStore } from '@/store/useFarmStore'
 import { useToast } from '@/hooks/useToast'
 import {
   geoPolygonAreaHa, geoPolygonPerimeterM, geoCentroid, geoToViewbox,
-  pointInPolygon, snapToEdges,
+  pointInPolygon, snapToEdges, nearestPointOnPolygon,
 } from '@/utils/geometry'
 import type { Point } from '@/types/domain'
 import { TILE_SOURCES } from '@/lib/tiles'
@@ -90,7 +90,7 @@ function ClickCapture({
 const GEO_SNAP_PX = 14
 
 function AnchorLayer({
-  vertices, interactive, snapTargets, dragRef, anchorClickedRef, onUpdate, onDelete,
+  vertices, interactive, snapTargets, dragRef, anchorClickedRef, onUpdate, onDelete, onClose,
 }: {
   vertices:         GeoPoint[]
   interactive:      boolean
@@ -99,8 +99,29 @@ function AnchorLayer({
   anchorClickedRef: React.MutableRefObject<boolean>
   onUpdate: (index: number, pos: GeoPoint) => void
   onDelete: (index: number) => void
+  onClose:  () => void
 }) {
   const map = useMap()
+
+  // Safety net: if mouseup/touchend fires outside the map container (e.g. the
+  // user drags an anchor off-screen), the useMapEvents mouseup below never fires.
+  // Without this, map.dragging stays disabled and every subsequent tap/click
+  // becomes a vertex instead of a pan.
+  useEffect(() => {
+    function cleanup() {
+      if (!dragRef.current) return
+      dragRef.current = null
+      map.dragging.enable()
+    }
+    document.addEventListener('mouseup',     cleanup)
+    document.addEventListener('touchend',    cleanup)
+    document.addEventListener('touchcancel', cleanup)
+    return () => {
+      document.removeEventListener('mouseup',     cleanup)
+      document.removeEventListener('touchend',    cleanup)
+      document.removeEventListener('touchcancel', cleanup)
+    }
+  }, [map, dragRef])
 
   function geoPolyToPx(poly: GeoPoint[]): Point[] {
     return poly.map((g) => {
@@ -133,7 +154,11 @@ function AnchorLayer({
       map.dragging.enable()
       if (!moved && interactive) {
         anchorClickedRef.current = true
-        onDelete(index)
+        if (index === 0 && vertices.length >= 3) {
+          onClose()
+        } else {
+          onDelete(index)
+        }
       }
     },
   })
@@ -176,9 +201,15 @@ interface GeoDemarcationProps {
 export default function GeoDemarcation({ onCancel, onFail, mode, onModeChange }: GeoDemarcationProps) {
   const navigate    = useNavigate()
   const toast       = useToast()
-  const farm        = useFarmStore((s) => s.farm)
-  const updateFarm  = useFarmStore((s) => s.updateFarm)
-  const addDivision = useFarmStore((s) => s.addDivision)
+  const farm          = useFarmStore((s) => s.farm)
+  const updateFarm    = useFarmStore((s) => s.updateFarm)
+  const addDivision   = useFarmStore((s) => s.addDivision)
+  const allDivisions  = useFarmStore((s) => s.divisions)
+
+  const existingDivisions = useMemo(
+    () => allDivisions.filter((d) => d.farmId === farm?.id && (d.geoPolygon?.length ?? 0) >= 3),
+    [allDivisions, farm?.id],
+  )
 
   const [vertices, setVertices]   = useState<GeoPoint[]>([])
   const [isClosed, setIsClosed]   = useState(false)
@@ -214,12 +245,27 @@ export default function GeoDemarcation({ onCancel, onFail, mode, onModeChange }:
 
   function handleAdd(p: GeoPoint) {
     if (target === 'division' && farm?.geoPolygon && farm.geoPolygon.length >= 3) {
-      const ptFlat: Point    = { x: p.lng, y: p.lat }
-      const polyFlat: Point[] = farm.geoPolygon.map((g) => ({ x: g.lng, y: g.lat }))
-      if (!pointInPolygon(ptFlat, polyFlat)) {
-        toast.error('Vértice fora do limite da propriedade.')
-        return
+      const ptFlat:   Point   = { x: p.lng,  y: p.lat  }
+      const farmFlat: Point[] = farm.geoPolygon.map((g) => ({ x: g.lng, y: g.lat }))
+
+      let snapped = ptFlat
+
+      if (!pointInPolygon(ptFlat, farmFlat)) {
+        // Outside farm: project onto nearest farm boundary point
+        snapped = nearestPointOnPolygon(ptFlat, farmFlat)
+      } else {
+        // Inside farm: if inside an existing division, project onto its boundary
+        for (const div of existingDivisions) {
+          const divFlat = div.geoPolygon!.map((g) => ({ x: g.lng, y: g.lat }))
+          if (pointInPolygon(ptFlat, divFlat)) {
+            snapped = nearestPointOnPolygon(ptFlat, divFlat)
+            break
+          }
+        }
       }
+
+      setVertices((prev) => [...prev, { lat: snapped.y, lng: snapped.x }])
+      return
     }
     setVertices((prev) => [...prev, p])
   }
@@ -304,10 +350,10 @@ export default function GeoDemarcation({ onCancel, onFail, mode, onModeChange }:
           zoom={15}
           scrollWheelZoom
           zoomControl={false}
-          className="w-full h-full"
+          className="w-full h-full geo-demarcation-map"
           style={{ background: '#0b1f12' }}
         >
-          <OfflineTiles sourceId="satelite" url={sat.url} attribution={sat.attribution} maxZoom={sat.maxZoom} />
+          <OfflineTiles sourceId="satelite" url={sat.url} attribution={sat.attribution} maxNativeZoom={sat.maxNativeZoom} />
           <TileFailWatcher onFail={onFail} />
           <ClickCapture
             verticesRef={verticesRef}
@@ -324,6 +370,7 @@ export default function GeoDemarcation({ onCancel, onFail, mode, onModeChange }:
             anchorClickedRef={anchorClickedRef}
             onUpdate={handleUpdate}
             onDelete={handleDeleteVertex}
+            onClose={handleClose}
           />
 
           {/* Farm boundary reference when drawing a division */}

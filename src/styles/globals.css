@@ -141,3 +141,9 @@
 .leaflet-interactive:focus-visible {
   outline: none !important;
 }
+
+/* Demarcation map: always crosshair */
+.geo-demarcation-map.leaflet-grab,
+.geo-demarcation-map.leaflet-grab.leaflet-dragging {
+  cursor: crosshair !important;
+}

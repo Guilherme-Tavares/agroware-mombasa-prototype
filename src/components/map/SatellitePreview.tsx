@@ -88,7 +88,7 @@ export default function SatellitePreview({ onFail }: SatellitePreviewProps) {
         sourceId="satelite"
         url={tiles.url}
         attribution={tiles.attribution}
-        maxZoom={tiles.maxZoom}
+        maxNativeZoom={tiles.maxNativeZoom}
       />
       <TileFailWatcher onFail={onFail} />
       <FitToFarm polygon={farmGeo} />

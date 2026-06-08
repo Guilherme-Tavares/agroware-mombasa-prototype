@@ -8,7 +8,7 @@ import 'leaflet/dist/leaflet.css'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { calculateHPPercentage, getHPStatus } from '@/utils/hp-system'
-import { polygonsOverlap, pointInPolygon, snapToEdges } from '@/utils/geometry'
+import { polygonsOverlap, pointInPolygon, snapToEdges, nearestPointOnPolygon } from '@/utils/geometry'
 import { TILE_SOURCES } from '@/lib/tiles'
 import OfflineTiles from './OfflineTiles.tsx'
 import type { GeoPoint, Point, Division } from '@/types/domain'
@@ -112,28 +112,6 @@ function FitToFarm({ polygon }: { polygon: GeoPoint[] }) {
   return null
 }
 
-// ─── LeafletInteractionController ────────────────────────────────────────────
-
-function LeafletInteractionController({ disabled }: { disabled: boolean }) {
-  const map = useMap()
-  useEffect(() => {
-    if (disabled) {
-      map.dragging.disable()
-      map.scrollWheelZoom.disable()
-      map.touchZoom.disable()
-      map.doubleClickZoom.disable()
-      map.boxZoom.disable()
-    } else {
-      map.dragging.enable()
-      map.scrollWheelZoom.enable()
-      map.touchZoom.enable()
-      map.doubleClickZoom.enable()
-      map.boxZoom.enable()
-    }
-  }, [map, disabled])
-  return null
-}
-
 // ─── FarmClickHandler ─────────────────────────────────────────────────────────
 // Three-zone click logic mirroring the illustrated layer + UX refinements:
 //   1. Inside a division            → ignored (division handler takes it)
@@ -151,6 +129,28 @@ interface FarmClickHandlerProps {
 
 function FarmClickHandler({ farmGeo, divisions, onSelectFarm }: FarmClickHandlerProps) {
   const map = useMap()
+
+  useMapEvent('mousemove', (e) => {
+    const container = map.getContainer()
+    const px = map.latLngToContainerPoint(e.latlng)
+    const pt = { x: px.x, y: px.y }
+
+    for (const d of divisions) {
+      if (!d.geoPolygon || d.geoPolygon.length < 3) continue
+      if (pointInPolygon(pt, geoPolyToPixels(d.geoPolygon, map))) {
+        container.style.cursor = ''
+        return
+      }
+    }
+
+    if (farmGeo.length < 3) { container.style.cursor = ''; return }
+    const farmPx = geoPolyToPixels(farmGeo, map)
+    const near = pointInPolygon(pt, farmPx) || minDistToPolygon(pt, farmPx) <= FARM_CLICK_MARGIN_PX
+    container.style.cursor = near ? 'pointer' : ''
+  })
+
+  useMapEvent('mouseout', () => { map.getContainer().style.cursor = '' })
+
   useMapEvent('click', (e) => {
     const px = map.latLngToContainerPoint(e.latlng)
     const pt = { x: px.x, y: px.y }
@@ -279,7 +279,7 @@ function GeoEditAnchorLayer({ initialPoly, otherGeoPoly, snapTargets = [], onCha
         const mx = (p.x + b.x) / 2
         const my = (p.y + b.y) / 2
         return (
-          <g key={`mid-${i}`} onClick={(e) => handleMidpointClick(e, i)} style={{ cursor: 'copy' }}>
+          <g key={`mid-${i}`} onClick={(e) => handleMidpointClick(e, i)} style={{ cursor: 'copy', pointerEvents: 'all' }}>
             <rect
               x={mx - 5} y={my - 5} width={10} height={10}
               transform={`rotate(45,${mx},${my})`}
@@ -297,7 +297,7 @@ function GeoEditAnchorLayer({ initialPoly, otherGeoPoly, snapTargets = [], onCha
             key={`anc-${i}`}
             onMouseEnter={() => setHoveredIdx(i)}
             onMouseLeave={() => setHoveredIdx(-1)}
-            style={{ touchAction: 'none' }}
+            style={{ touchAction: 'none', pointerEvents: 'all' }}
           >
             <circle
               cx={p.x} cy={p.y} r={R}
@@ -370,8 +370,8 @@ function GeoDrawGuideLayer({ vertices, cursorGeo, onVertexClick }: GeoDrawGuideL
         return (
           <g
             key={`v-${i}`}
-            onClick={(e) => { e.stopPropagation(); onVertexClick(i) }}
-            style={{ cursor: 'pointer' }}
+            onClick={(e) => { e.stopPropagation(); e.nativeEvent.stopPropagation(); onVertexClick(i) }}
+            style={{ cursor: 'pointer', pointerEvents: 'all' }}
           >
             {showClose ? (
               <>
@@ -466,31 +466,54 @@ function SatelliteEditOverlay({
 
   const isPlacing = mapMode.type === 'place-element' || mapMode.type === 'reposition'
 
-  function handleSvgClick(e: React.MouseEvent) {
-    const rect = (e.currentTarget as SVGElement).getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    const geoPoint = p2g(x, y, map)
-
+  useMapEvent('click', (e) => {
+    const rawGeo = { lat: e.latlng.lat, lng: e.latlng.lng }
     if (mapMode.type === 'draw-division') {
-      e.stopPropagation()
-      onGeoVertexAdd?.(geoPoint)
-    } else if (isPlacing) {
-      e.stopPropagation()
+      let finalGeo = rawGeo
+      if (farmGeo.length >= 3) {
+        const ptFlat:   Point   = { x: rawGeo.lng, y: rawGeo.lat }
+        const farmFlat: Point[] = farmGeo.map((g) => ({ x: g.lng, y: g.lat }))
+        if (!pointInPolygon(ptFlat, farmFlat)) {
+          const s = nearestPointOnPolygon(ptFlat, farmFlat)
+          finalGeo = { lat: s.y, lng: s.x }
+        } else {
+          for (const div of farmDivisions) {
+            if (!div.geoPolygon || div.geoPolygon.length < 3) continue
+            const divFlat = div.geoPolygon.map((g) => ({ x: g.lng, y: g.lat }))
+            if (pointInPolygon(ptFlat, divFlat)) {
+              const s = nearestPointOnPolygon(ptFlat, divFlat)
+              finalGeo = { lat: s.y, lng: s.x }
+              break
+            }
+          }
+        }
+      }
+      onGeoVertexAdd?.(finalGeo)
+    } else if (mapMode.type === 'place-element' || mapMode.type === 'reposition') {
+      const { x, y } = map.latLngToContainerPoint(e.latlng)
       const div = findDivisionAtPixel(x, y, farmDivisions, map)
       if (div) {
-        onGeoElementReposition?.(mapMode.elementType, mapMode.elementId, geoPoint, div.id)
+        onGeoElementReposition?.(mapMode.elementType, mapMode.elementId, rawGeo, div.id)
       }
     }
-  }
+  })
 
-  function handleSvgMove(e: React.PointerEvent) {
+  useMapEvent('mousemove', (e) => {
     if (mapMode.type !== 'draw-division') return
-    const rect = (e.currentTarget as SVGElement).getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    setCursorGeo(p2g(x, y, map))
-  }
+    setCursorGeo({ lat: e.latlng.lat, lng: e.latlng.lng })
+  })
+
+  useMapEvent('mouseout', () => setCursorGeo(null))
+
+  useEffect(() => {
+    const container = map.getContainer()
+    if (mapMode.type === 'draw-division') {
+      container.classList.add('geo-demarcation-map')
+    } else {
+      container.classList.remove('geo-demarcation-map')
+    }
+    return () => container.classList.remove('geo-demarcation-map')
+  }, [map, mapMode.type])
 
   function handleVertexClick(i: number) {
     if (i === 0 && pendingGeoVertices.length >= 3) {
@@ -510,12 +533,8 @@ function SatelliteEditOverlay({
         width: '100%',
         height: '100%',
         zIndex: 450,
-        pointerEvents: 'all',
-        touchAction: 'none',
+        pointerEvents: 'none',
       }}
-      onClick={handleSvgClick}
-      onPointerMove={handleSvgMove}
-      onPointerLeave={() => setCursorGeo(null)}
     >
       {/* Farm boundary reference */}
       {farmGeo.length >= 3 && (
@@ -621,11 +640,10 @@ export default function RealFarmMap({
           sourceId="satelite"
           url={tiles.url}
           attribution={tiles.attribution}
-          maxZoom={tiles.maxZoom}
+          maxNativeZoom={tiles.maxNativeZoom}
         />
 
         {farmGeo.length >= 3 && <FitToFarm polygon={farmGeo} />}
-        <LeafletInteractionController disabled={inEditMode} />
 
         {/* View mode: Leaflet native layers */}
         {!inEditMode && (

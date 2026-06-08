@@ -123,6 +123,15 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
       { to: '/reports', label: 'Relatórios', icon: <BarChart2 size={18} /> },
     ],
   },
+  {
+    title: 'Conta',
+    items: [
+      { to: '/profile', label: 'Perfil', icon: <UserCircle size={18} />, end: true },
+      { to: '/access', label: 'Acesso e usuários', icon: <UserCog size={18} />, end: true },
+      { to: '/users-invites', label: 'Usuários e convites', icon: <Users size={18} />, end: true },
+      { to: '/settings', label: 'Configurações', icon: <Settings size={18} />, end: true },
+    ],
+  },
 ]
 
 function NavItemLink({ to, label, icon, end }: NavItem) {
@@ -197,86 +206,30 @@ export default function Sidebar() {
               </ul>
             </div>
           ))}
+
+          <div>
+            <ul className="space-y-0.5">
+              <li>
+                <a
+                  href="#"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                >
+                  <HelpCircle size={18} aria-hidden="true" />
+                  Ajuda
+                </a>
+              </li>
+              <li>
+                <button
+                  onClick={logout}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium text-alert hover:bg-alert-bg transition-colors"
+                >
+                  <LogOut size={18} aria-hidden="true" />
+                  Sair
+                </button>
+              </li>
+            </ul>
+          </div>
         </nav>
-
-        {/* rodapé */}
-        <div className="shrink-0 border-t border-gray-200 px-3 py-3 space-y-0.5">
-          <NavLink
-            to="/profile"
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium transition-colors',
-                isActive
-                  ? 'bg-primary-bg text-primary'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-              )
-            }
-          >
-            <UserCircle size={18} aria-hidden="true" />
-            Perfil
-          </NavLink>
-
-          <NavLink
-            to="/access"
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium transition-colors',
-                isActive
-                  ? 'bg-primary-bg text-primary'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-              )
-            }
-          >
-            <UserCog size={18} aria-hidden="true" />
-            Acesso e usuários
-          </NavLink>
-
-          <NavLink
-            to="/users-invites"
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium transition-colors',
-                isActive
-                  ? 'bg-primary-bg text-primary'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-              )
-            }
-          >
-            <Users size={18} aria-hidden="true" />
-            Usuários e convites
-          </NavLink>
-
-          <NavLink
-            to="/settings"
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium transition-colors',
-                isActive
-                  ? 'bg-primary-bg text-primary'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-              )
-            }
-          >
-            <Settings size={18} aria-hidden="true" />
-            Configurações
-          </NavLink>
-
-          <a
-            href="#"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
-          >
-            <HelpCircle size={18} aria-hidden="true" />
-            Ajuda
-          </a>
-
-          <button
-            onClick={logout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-body font-medium text-alert hover:bg-alert-bg transition-colors"
-          >
-            <LogOut size={18} aria-hidden="true" />
-            Sair
-          </button>
-        </div>
       </aside>
     </>
   )

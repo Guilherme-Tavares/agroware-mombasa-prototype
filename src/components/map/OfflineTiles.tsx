@@ -19,7 +19,7 @@ interface OfflineTilesProps {
   sourceId: TileSourceId
   url: string
   attribution: string
-  maxZoom: number
+  maxNativeZoom: number
 }
 
 // L.TileLayer.extend não é fortemente tipado; o interop fica encapsulado aqui.
@@ -63,13 +63,16 @@ const CachedTileLayer = L.TileLayer.extend({
   },
 })
 
-export default function OfflineTiles({ sourceId, url, attribution, maxZoom }: OfflineTilesProps) {
+export default function OfflineTiles({ sourceId, url, attribution, maxNativeZoom }: OfflineTilesProps) {
   const map = useMap()
 
   useEffect(() => {
     const layer = new (CachedTileLayer as unknown as typeof L.TileLayer)(url, {
       attribution,
-      maxZoom,
+      // Tiles do provedor existem até maxNativeZoom; acima disso o Leaflet
+      // escala os últimos tiles disponíveis em vez de exibir o placeholder.
+      maxNativeZoom,
+      maxZoom: 21,
       // Propriedade custom lida em createTile.
       sourceId,
     } as L.TileLayerOptions)
@@ -78,7 +81,7 @@ export default function OfflineTiles({ sourceId, url, attribution, maxZoom }: Of
     return () => {
       map.removeLayer(layer)
     }
-  }, [map, sourceId, url, attribution, maxZoom])
+  }, [map, sourceId, url, attribution, maxNativeZoom])
 
   return null
 }

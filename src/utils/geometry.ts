@@ -186,6 +186,24 @@ export function nearestPointOnSegment(p: Point, a: Point, b: Point): Point {
 }
 
 /**
+ * Retorna o ponto da fronteira do polígono mais próximo de p, sem raio
+ * limitante. Usado para colapsar um clique fora de uma área válida sobre a
+ * borda mais próxima (snapping incondicional, ao contrário de snapToEdges).
+ */
+export function nearestPointOnPolygon(p: Point, polygon: Point[]): Point {
+  let best: Point = polygon[0]
+  let bestDist = Infinity
+  for (let i = 0; i < polygon.length; i++) {
+    const a = polygon[i]
+    const b = polygon[(i + 1) % polygon.length]
+    const candidate = nearestPointOnSegment(p, a, b)
+    const d = Math.hypot(candidate.x - p.x, candidate.y - p.y)
+    if (d < bestDist) { bestDist = d; best = candidate }
+  }
+  return best
+}
+
+/**
  * Verifica se o ponto está a ≤ tolerance unidades de qualquer aresta do
  * polígono. Usado para aceitar âncoras posicionadas "sobre" uma linha.
  */
