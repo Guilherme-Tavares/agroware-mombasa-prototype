@@ -57,17 +57,20 @@ function TileFailWatcher({ onFail }: { onFail?: () => void }) {
 // ─── Click to add vertex or close polygon ────────────────────────────────────
 
 function ClickCapture({
-  verticesRef, closedRef, anchorClickedRef, onAdd, onClose,
+  verticesRef, closedRef, anchorClickedRef, panModeRef, onAdd, onClose,
 }: {
   verticesRef:      React.MutableRefObject<GeoPoint[]>
   closedRef:        React.MutableRefObject<boolean>
   anchorClickedRef: React.MutableRefObject<boolean>
+  panModeRef:       React.MutableRefObject<boolean>
   onAdd:   (p: GeoPoint) => void
   onClose: () => void
 }) {
   const map = useMapEvents({
     click(e) {
       if (closedRef.current) return
+      // Long-press pan was active for this gesture — suppress anchor creation.
+      if (panModeRef.current) { panModeRef.current = false; return }
       // An anchor was pressed → deletion already handled; don't add a new vertex.
       if (anchorClickedRef.current) {
         anchorClickedRef.current = false
@@ -103,16 +106,9 @@ function AnchorLayer({
 }) {
   const map = useMap()
 
-  // Safety net: if mouseup/touchend fires outside the map container (e.g. the
-  // user drags an anchor off-screen), the useMapEvents mouseup below never fires.
-  // Without this, map.dragging stays disabled and every subsequent tap/click
-  // becomes a vertex instead of a pan.
+  // Safety net: reset dragRef if pointerup fires outside the map container.
   useEffect(() => {
-    function cleanup() {
-      if (!dragRef.current) return
-      dragRef.current = null
-      map.dragging.enable()
-    }
+    function cleanup() { dragRef.current = null }
     document.addEventListener('mouseup',     cleanup)
     document.addEventListener('touchend',    cleanup)
     document.addEventListener('touchcancel', cleanup)
@@ -121,7 +117,7 @@ function AnchorLayer({
       document.removeEventListener('touchend',    cleanup)
       document.removeEventListener('touchcancel', cleanup)
     }
-  }, [map, dragRef])
+  }, [dragRef])
 
   function geoPolyToPx(poly: GeoPoint[]): Point[] {
     return poly.map((g) => {
@@ -151,7 +147,6 @@ function AnchorLayer({
       if (!dragRef.current) return
       const { index, moved } = dragRef.current
       dragRef.current = null
-      map.dragging.enable()
       if (!moved && interactive) {
         anchorClickedRef.current = true
         if (index === 0 && vertices.length >= 3) {
@@ -178,13 +173,91 @@ function AnchorLayer({
             mousedown: (e: L.LeafletMouseEvent) => {
               ;(e.originalEvent.target as HTMLElement)?.blur?.()
               dragRef.current = { index: i, moved: false }
-              map.dragging.disable()
             },
           } : {}}
         />
       ))}
     </>
   )
+}
+
+// ─── Long-press-to-pan controller ────────────────────────────────────────────
+// Default state: pan disabled (cursor = crosshair, clicks create anchors).
+// Hold 100 ms → pan mode activates. Release → pan disabled, no anchor placed.
+// panModeRef stays true until ClickCapture reads it (RAF-deferred reset) so
+// releasing a hold without moving does not create a spurious anchor.
+
+const LONG_PRESS_MS = 100
+
+function LongPressPanController({ panModeRef }: { panModeRef: React.MutableRefObject<boolean> }) {
+  const map = useMap()
+
+  useEffect(() => {
+    map.dragging.disable()
+    return () => { map.dragging.enable() }
+  }, [map])
+
+  useEffect(() => {
+    const container = map.getContainer()
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let panActive = false
+    let lastX = 0
+    let lastY = 0
+    function onPointerDown(e: PointerEvent) {
+      if ((e.target as Element)?.closest?.('.leaflet-interactive')) return
+      panModeRef.current = false
+      panActive = false
+      lastX = e.clientX
+      lastY = e.clientY
+
+      // Pointer capture keeps events routing here even outside the container.
+      try { container.setPointerCapture(e.pointerId) } catch { /* ignore */ }
+
+      timer = setTimeout(() => {
+        panModeRef.current = true
+        panActive = true
+        container.classList.add('geo-pan-active')
+        // Disable elastic overscroll on the page while panning so the browser
+        // can't rubber-band the viewport (which would make the pointer appear
+        // to drift and snap back on release).
+        document.documentElement.style.overscrollBehavior = 'none'
+      }, LONG_PRESS_MS)
+    }
+
+    function onPointerMove(e: PointerEvent) {
+      const dx = e.clientX - lastX
+      const dy = e.clientY - lastY
+      lastX = e.clientX
+      lastY = e.clientY
+      if (!panActive) return
+      e.preventDefault()
+      e.stopPropagation()
+      map.panBy([-dx, -dy], { animate: false })
+    }
+
+    function onPointerUp() {
+      if (timer) { clearTimeout(timer); timer = null }
+      panActive = false
+      container.classList.remove('geo-pan-active')
+      document.documentElement.style.overscrollBehavior = ''
+      if (panModeRef.current) {
+        requestAnimationFrame(() => { panModeRef.current = false })
+      }
+    }
+
+    container.addEventListener('pointerdown', onPointerDown, { passive: false })
+    container.addEventListener('pointermove', onPointerMove, { passive: false })
+    document.addEventListener('pointerup',     onPointerUp)
+    document.addEventListener('pointercancel', onPointerUp)
+    return () => {
+      container.removeEventListener('pointerdown', onPointerDown)
+      container.removeEventListener('pointermove', onPointerMove)
+      document.removeEventListener('pointerup',     onPointerUp)
+      document.removeEventListener('pointercancel', onPointerUp)
+    }
+  }, [map, panModeRef])
+
+  return null
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -226,6 +299,7 @@ export default function GeoDemarcation({ onCancel, onFail, mode, onModeChange }:
   const closedRef        = useRef<boolean>(isClosed)
   const dragRef          = useRef<DragState>(null)
   const anchorClickedRef = useRef(false)
+  const panModeRef       = useRef(false)
 
   useEffect(() => { verticesRef.current = vertices }, [vertices])
   useEffect(() => { closedRef.current   = isClosed  }, [isClosed])
@@ -355,10 +429,12 @@ export default function GeoDemarcation({ onCancel, onFail, mode, onModeChange }:
         >
           <OfflineTiles sourceId="satelite" url={sat.url} attribution={sat.attribution} maxNativeZoom={sat.maxNativeZoom} />
           <TileFailWatcher onFail={onFail} />
+          <LongPressPanController panModeRef={panModeRef} />
           <ClickCapture
             verticesRef={verticesRef}
             closedRef={closedRef}
             anchorClickedRef={anchorClickedRef}
+            panModeRef={panModeRef}
             onAdd={handleAdd}
             onClose={handleClose}
           />

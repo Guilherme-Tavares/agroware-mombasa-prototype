@@ -142,8 +142,26 @@
   outline: none !important;
 }
 
-/* Demarcation map: always crosshair */
-.geo-demarcation-map.leaflet-grab,
-.geo-demarcation-map.leaflet-grab.leaflet-dragging {
+/* Demarcation: crosshair in anchor-placement mode, grabbing during long-press
+   pan. Cursor is managed via geo-pan-active class (added/removed in JS) rather
+   than Leaflet's leaflet-grab/leaflet-dragging — dragging stays disabled for
+   the entire demarcation session; pan is done manually via map.panBy.
+   touch-action:none prevents the browser from claiming the gesture as a native
+   scroll before our pointermove handler can call preventDefault. */
+.geo-demarcation-map {
+  touch-action: none;
+}
+.geo-demarcation-map:not(.geo-pan-active) {
   cursor: crosshair !important;
 }
+.geo-demarcation-map.geo-pan-active,
+.geo-demarcation-map.geo-pan-active * {
+  cursor: grabbing !important;
+}
+/* Disable pointer-events on anchors during pan so they can't override the
+   grabbing cursor or accidentally receive clicks/hovers mid-gesture. */
+.geo-demarcation-map.geo-pan-active .leaflet-interactive {
+  pointer-events: none !important;
+}
+
+
