@@ -172,6 +172,78 @@ function FarmClickHandler({ farmGeo, divisions, onSelectFarm }: FarmClickHandler
   return null
 }
 
+// ─── LongPressPanController ───────────────────────────────────────────────────
+// Identical logic to the one in GeoDemarcation.tsx, but the "don't intercept"
+// check targets [data-geo-anchor] (SVG anchors) instead of .leaflet-interactive.
+
+const LONG_PRESS_MS = 100
+
+function LongPressPanController({ panModeRef }: { panModeRef: React.MutableRefObject<boolean> }) {
+  const map = useMap()
+
+  useEffect(() => {
+    map.dragging.disable()
+    return () => { map.dragging.enable() }
+  }, [map])
+
+  useEffect(() => {
+    const container = map.getContainer()
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let panActive = false
+    let lastX = 0
+    let lastY = 0
+
+    function onPointerDown(e: PointerEvent) {
+      if ((e.target as Element)?.closest?.('[data-geo-anchor]')) return
+      panModeRef.current = false
+      panActive = false
+      lastX = e.clientX
+      lastY = e.clientY
+      try { container.setPointerCapture(e.pointerId) } catch { /* ignore */ }
+      timer = setTimeout(() => {
+        panModeRef.current = true
+        panActive = true
+        container.classList.add('geo-pan-active')
+        document.documentElement.style.overscrollBehavior = 'none'
+      }, LONG_PRESS_MS)
+    }
+
+    function onPointerMove(e: PointerEvent) {
+      const dx = e.clientX - lastX
+      const dy = e.clientY - lastY
+      lastX = e.clientX
+      lastY = e.clientY
+      if (!panActive) return
+      e.preventDefault()
+      e.stopPropagation()
+      map.panBy([-dx, -dy], { animate: false })
+    }
+
+    function onPointerUp() {
+      if (timer) { clearTimeout(timer); timer = null }
+      panActive = false
+      container.classList.remove('geo-pan-active')
+      document.documentElement.style.overscrollBehavior = ''
+      if (panModeRef.current) {
+        requestAnimationFrame(() => { panModeRef.current = false })
+      }
+    }
+
+    container.addEventListener('pointerdown', onPointerDown, { passive: false })
+    container.addEventListener('pointermove', onPointerMove, { passive: false })
+    document.addEventListener('pointerup',     onPointerUp)
+    document.addEventListener('pointercancel', onPointerUp)
+    return () => {
+      container.removeEventListener('pointerdown', onPointerDown)
+      container.removeEventListener('pointermove', onPointerMove)
+      document.removeEventListener('pointerup',     onPointerUp)
+      document.removeEventListener('pointercancel', onPointerUp)
+    }
+  }, [map, panModeRef])
+
+  return null
+}
+
 // ─── GeoEditAnchorLayer ───────────────────────────────────────────────────────
 
 const GEO_SNAP_PX = 14
@@ -279,7 +351,7 @@ function GeoEditAnchorLayer({ initialPoly, otherGeoPoly, snapTargets = [], onCha
         const mx = (p.x + b.x) / 2
         const my = (p.y + b.y) / 2
         return (
-          <g key={`mid-${i}`} onClick={(e) => handleMidpointClick(e, i)} style={{ cursor: 'copy', pointerEvents: 'all' }}>
+          <g key={`mid-${i}`} data-geo-anchor="true" onClick={(e) => handleMidpointClick(e, i)} style={{ cursor: 'copy', pointerEvents: 'all' }}>
             <rect
               x={mx - 5} y={my - 5} width={10} height={10}
               transform={`rotate(45,${mx},${my})`}
@@ -295,6 +367,7 @@ function GeoEditAnchorLayer({ initialPoly, otherGeoPoly, snapTargets = [], onCha
         return (
           <g
             key={`anc-${i}`}
+            data-geo-anchor="true"
             onMouseEnter={() => setHoveredIdx(i)}
             onMouseLeave={() => setHoveredIdx(-1)}
             style={{ touchAction: 'none', pointerEvents: 'all' }}
@@ -419,6 +492,7 @@ function SatelliteEditOverlay({
   const map = useMap()
   const [, setTick] = useState(0)
   const [cursorGeo, setCursorGeo] = useState<GeoPoint | null>(null)
+  const panModeRef = useRef(false)
 
   const farm      = useFarmStore((s) => s.farm)
   const divisions = useFarmStore((s) => s.divisions)
@@ -507,12 +581,12 @@ function SatelliteEditOverlay({
 
   useEffect(() => {
     const container = map.getContainer()
-    if (mapMode.type === 'draw-division') {
-      container.classList.add('geo-demarcation-map')
-    } else {
+    container.classList.toggle('geo-demarcation-map', mapMode.type === 'draw-division')
+    container.classList.toggle('geo-edit-map',        mapMode.type === 'edit-polygon')
+    return () => {
       container.classList.remove('geo-demarcation-map')
+      container.classList.remove('geo-edit-map')
     }
-    return () => container.classList.remove('geo-demarcation-map')
   }, [map, mapMode.type])
 
   function handleVertexClick(i: number) {
@@ -525,7 +599,10 @@ function SatelliteEditOverlay({
 
   const container = map.getContainer()
 
-  return createPortal(
+  return (
+    <>
+      {mapMode.type === 'edit-polygon' && <LongPressPanController panModeRef={panModeRef} />}
+      {createPortal(
     <svg
       style={{
         position: 'absolute',
@@ -598,6 +675,8 @@ function SatelliteEditOverlay({
       )}
     </svg>,
     container,
+  )}
+    </>
   )
 }
 

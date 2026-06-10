@@ -142,6 +142,20 @@
   outline: none !important;
 }
 
+/* Edit-polygon mode: static map, long-press activates pan (no crosshair —
+   base cursor stays default so anchor move/delete cursors remain visible). */
+.geo-edit-map {
+  touch-action: none;
+}
+.geo-edit-map.geo-pan-active,
+.geo-edit-map.geo-pan-active * {
+  cursor: grabbing !important;
+}
+/* Suppress pointer-events on anchors so they can't intercept pan mid-gesture */
+.geo-edit-map.geo-pan-active [data-geo-anchor] {
+  pointer-events: none !important;
+}
+
 /* Demarcation: crosshair in anchor-placement mode, grabbing during long-press
    pan. Cursor is managed via geo-pan-active class (added/removed in JS) rather
    than Leaflet's leaflet-grab/leaflet-dragging — dragging stays disabled for
