@@ -174,7 +174,8 @@
 }
 /* Disable pointer-events on anchors during pan so they can't override the
    grabbing cursor or accidentally receive clicks/hovers mid-gesture. */
-.geo-demarcation-map.geo-pan-active .leaflet-interactive {
+.geo-demarcation-map.geo-pan-active .leaflet-interactive,
+.geo-demarcation-map.geo-pan-active [data-geo-anchor] {
   pointer-events: none !important;
 }
 

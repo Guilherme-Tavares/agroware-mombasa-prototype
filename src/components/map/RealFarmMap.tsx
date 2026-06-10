@@ -443,6 +443,7 @@ function GeoDrawGuideLayer({ vertices, cursorGeo, onVertexClick }: GeoDrawGuideL
         return (
           <g
             key={`v-${i}`}
+            data-geo-anchor="true"
             onClick={(e) => { e.stopPropagation(); e.nativeEvent.stopPropagation(); onVertexClick(i) }}
             style={{ cursor: 'pointer', pointerEvents: 'all' }}
           >
@@ -543,6 +544,7 @@ function SatelliteEditOverlay({
   useMapEvent('click', (e) => {
     const rawGeo = { lat: e.latlng.lat, lng: e.latlng.lng }
     if (mapMode.type === 'draw-division') {
+      if (panModeRef.current) return
       let finalGeo = rawGeo
       if (farmGeo.length >= 3) {
         const ptFlat:   Point   = { x: rawGeo.lng, y: rawGeo.lat }
@@ -601,7 +603,7 @@ function SatelliteEditOverlay({
 
   return (
     <>
-      {mapMode.type === 'edit-polygon' && <LongPressPanController panModeRef={panModeRef} />}
+      {(mapMode.type === 'edit-polygon' || mapMode.type === 'draw-division') && <LongPressPanController panModeRef={panModeRef} />}
       {createPortal(
     <svg
       style={{
