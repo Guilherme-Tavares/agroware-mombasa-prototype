@@ -17,7 +17,7 @@ import StylizedFarmMap, {
 } from '@/components/map/StylizedFarmMap.tsx'
 import RealFarmMap from '@/components/map/RealFarmMap.tsx'
 import {
-  ZoomControls, LayerTogglePanel, MapStyleToggle, type MapBaseLayer,
+  LayerTogglePanel, MapStyleToggle, type MapBaseLayer,
 } from '@/components/map/MapControls.tsx'
 import DetailPanel from '@/components/map/DetailPanel.tsx'
 import BottomSheet from '@/components/ui/BottomSheet.tsx'
@@ -106,9 +106,10 @@ export default function MapPage() {
   const panZoomApi = useMapPanZoom({
     viewBoxWidth: 1000, viewBoxHeight: 700,
     disabled: mapMode.type === 'edit-polygon' || mapMode.type === 'draw-division',
-    longPressToPan: true,
+    // Mapa estático + long-press para pan no view e em posicionar/reposicionar.
     // Em posicionar/reposicionar, segurar já entra em modo pan (não solta o
-    // elemento ao soltar); no view mode, hold parado ainda seleciona.
+    // elemento ao soltar) e o toque rápido solta.
+    longPressToPan: true,
     longPressEngageOnArm: mapMode.type === 'place-element' || mapMode.type === 'reposition',
   })
 
@@ -509,7 +510,7 @@ export default function MapPage() {
     : (farm.geoPolygon?.length ?? 0) >= 3
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 h-[calc(100svh-156px)] lg:h-[calc(100svh-108px)] min-h-0">
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 6 }}
@@ -539,7 +540,7 @@ export default function MapPage() {
       </motion.div>
 
       {/* ── Map container ──────────────────────────────────────────────────── */}
-      <div className="relative w-full overflow-hidden rounded-2xl border border-gray-200 shadow-card bg-white h-[calc(100svh-230px)] min-h-[480px] lg:min-h-[560px]">
+      <div className="relative w-full overflow-hidden rounded-2xl border border-gray-200 shadow-card bg-white flex-1 min-h-0">
 
         {!farmHasPolygon ? (
           /* ── Undemarked state inside map area ── */
@@ -590,18 +591,6 @@ export default function MapPage() {
                 onGeoVertexDelete={handleGeoVertexDelete}
                 onGeoPolygonClose={handleGeoPolygonClose}
               />
-            )}
-
-            {/* Zoom controls — illustrated only, top-right */}
-            {isIllustrated && !inEditMode && (
-              <div className="absolute top-3 right-3 z-10">
-                <ZoomControls
-                  zoom={panZoomApi.zoom}
-                  onZoomIn={panZoomApi.zoomIn}
-                  onZoomOut={panZoomApi.zoomOut}
-                  onReset={panZoomApi.reset}
-                />
-              </div>
             )}
 
             {/* Offline map shortcut — satellite only, top-right */}

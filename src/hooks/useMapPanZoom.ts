@@ -4,7 +4,8 @@ import type { Point } from '@/types/domain'
 const MIN_ZOOM = 0.5
 const MAX_ZOOM = 3
 const CLICK_THRESHOLD_PX = 5
-const LONG_PRESS_MS = 100
+const LONG_PRESS_MS_MOUSE = 100
+const LONG_PRESS_MS_TOUCH = 100
 
 interface UseMapPanZoomOptions {
   viewBoxWidth?:  number
@@ -136,6 +137,7 @@ export function useMapPanZoom({
       lpArmedRef.current = !longPressToPan
       if (lpTimerRef.current) { clearTimeout(lpTimerRef.current); lpTimerRef.current = null }
       if (longPressToPan) {
+        const ms = e.pointerType === 'touch' ? LONG_PRESS_MS_TOUCH : LONG_PRESS_MS_MOUSE
         lpTimerRef.current = setTimeout(() => {
           lpArmedRef.current = true
           // Engata o modo pan já ao armar (sem precisar mover): grabbing + clique
@@ -144,7 +146,7 @@ export function useMapPanZoom({
             wasDraggingRef.current = true
             svgRef.current?.classList.add('map-panning')
           }
-        }, LONG_PRESS_MS)
+        }, ms)
       }
     } else if (pointersRef.current.size === 2) {
       // Pinch zoom is unaffected by long-press gating.

@@ -120,7 +120,7 @@ src/
 │   ├── domain/                     # CattleIcon, FeedTroughMarker, HPBar...
 │   └── map/
 │       ├── StylizedFarmMap.tsx     # SVG inline com 6 camadas + pan/zoom
-│       ├── MapControls.tsx         # ZoomControls, LayerTogglePanel, MapStyleToggle
+│       ├── MapControls.tsx         # LayerTogglePanel, MapStyleToggle
 │       └── DetailPanel.tsx         # Painel: DivisionDetail, HerdDetail, TroughDetail
 ├── data/
 │   ├── mockFarm.ts                 # Dataset mock (Sítio Santa Fé e Sítio Serra Azul)

@@ -1,57 +1,12 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Plus, Minus, Maximize2, Layers,
-  Satellite, Palette, Beef, Droplets, Wheat,
-  Grid3x3,
+  Layers, Satellite, Palette, Beef, Droplets, Wheat, Grid3x3,
 } from 'lucide-react'
 import type { MapLayers } from './StylizedFarmMap.tsx'
 
 /** Camada base do mapa: ilustrada (SVG) ou satélite (Esri). */
 export type MapBaseLayer = 'ilustrada' | 'satelite'
-
-// ─── Zoom controls (top-right) ────────────────────────────────────────────────
-
-interface ZoomControlsProps {
-  zoom:    number
-  onZoomIn:  () => void
-  onZoomOut: () => void
-  onReset:   () => void
-}
-
-export function ZoomControls({ zoom, onZoomIn, onZoomOut, onReset }: ZoomControlsProps) {
-  return (
-    <div className="flex flex-col rounded-xl bg-white shadow-floating border border-gray-200 overflow-hidden">
-      <CtrlBtn icon={<Plus  size={16} />} onClick={onZoomIn}  ariaLabel="Aproximar" />
-      <div className="h-px bg-gray-100" />
-      <button
-        onClick={onReset}
-        aria-label="Centralizar"
-        className="px-2 py-1.5 text-caption font-data text-gray-600 hover:bg-gray-50 transition-colors tabular-nums"
-      >
-        {Math.round(zoom * 100)}%
-      </button>
-      <div className="h-px bg-gray-100" />
-      <CtrlBtn icon={<Minus size={16} />} onClick={onZoomOut} ariaLabel="Afastar" />
-      <div className="h-px bg-gray-100" />
-      <CtrlBtn icon={<Maximize2 size={14} />} onClick={onReset} ariaLabel="Resetar visualização" />
-    </div>
-  )
-}
-
-function CtrlBtn({
-  icon, onClick, ariaLabel,
-}: { icon: React.ReactNode; onClick: () => void; ariaLabel: string }) {
-  return (
-    <button
-      onClick={onClick}
-      aria-label={ariaLabel}
-      className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-    >
-      {icon}
-    </button>
-  )
-}
 
 // ─── Layer toggle (bottom-left, expandable) ───────────────────────────────────
 
@@ -73,14 +28,19 @@ export function LayerTogglePanel({ layers, onToggle }: LayerTogglePanelProps) {
 
   return (
     <div className="rounded-xl bg-white shadow-floating border border-gray-200 overflow-hidden">
-      {/* Header / collapsed state */}
+      {/* Collapsed trigger: icon-only on mobile, icon + label on desktop — same
+          metrics (px-3 py-2 / text-button / size-14 icon / label hidden on mobile)
+          as the other corner buttons, so all heights match. On mobile the
+          "Camadas" title shows in the body instead (the trigger has no label). */}
       <button
         onClick={() => setExpanded((e) => !e)}
+        aria-label="Camadas"
+        aria-expanded={expanded}
         className="w-full flex items-center gap-2 px-3 py-2 text-button text-gray-900 hover:bg-gray-50 transition-colors"
       >
-        <Layers size={16} className="text-primary" />
-        <span>Camadas</span>
-        <span className="text-caption text-gray-400 ml-1">{activeCount}/4</span>
+        <Layers size={14} className="text-primary" />
+        <span className="hidden sm:inline">Camadas</span>
+        <span className="hidden sm:inline text-caption text-gray-400 ml-1">{activeCount}/4</span>
       </button>
 
       <AnimatePresence initial={false}>
@@ -93,6 +53,10 @@ export function LayerTogglePanel({ layers, onToggle }: LayerTogglePanelProps) {
             style={{ overflow: 'hidden' }}
           >
             <div className="border-t border-gray-100 p-2 flex flex-col gap-1 min-w-[180px]">
+              <div className="flex items-center justify-between px-2 pt-0.5 pb-1 sm:hidden">
+                <span className="text-button text-gray-900">Camadas</span>
+                <span className="text-caption text-gray-400">{activeCount}/4</span>
+              </div>
               {LAYER_ITEMS.map(({ key, label, icon }) => {
                 const active = layers[key]
                 return (

@@ -175,29 +175,32 @@ function FarmClickHandler({ farmGeo, divisions, onSelectFarm, panModeRef }: Farm
 }
 
 // ─── LongPressPanController ───────────────────────────────────────────────────
-// Static map; a long-press (~100 ms) activates manual pan via map.panBy.
+// Static map; a long-press activates manual pan via map.panBy. Threshold is
+// pointer-type aware: ~100 ms for mouse, ~250 ms for touch (a touch tap can take
+// longer than 100 ms, so a shorter threshold would swallow taps).
 //
-// Two usage modes:
-//  • Edit/draw (default): skipInteractive=true skips presses on [data-geo-anchor]
-//    so anchors stay clickable; the hold timer engages pan immediately.
-//  • View mode: skipInteractive=false (divisions cover the whole map, so pan must
-//    be allowed to start anywhere) + engageOnMove=true so a long stationary hold
-//    that never moves still counts as a tap (lets click-to-select fire), while a
-//    hold-then-drag pans. containerClassName applies the matching CSS class.
+// Touch robustness: the pan engages AT the long-press timer (capture is taken
+// while the finger is still held, before the drag), and pointermove/up are bound
+// to `document` (not the container) so moves keep arriving even if the implicit
+// touch capture target changes — both were why touch panning failed before.
+//
+// `skipInteractive` (default true) skips presses on [data-geo-anchor] so edit
+// anchors stay draggable; view mode passes false (divisions cover the whole map,
+// so pan must be allowed to start anywhere). `containerClassName` applies the
+// matching cursor/touch-action CSS.
 
-const LONG_PRESS_MS = 100
+const LONG_PRESS_MS_MOUSE = 100
+const LONG_PRESS_MS_TOUCH = 100
 
 interface LongPressPanControllerProps {
   panModeRef:         React.MutableRefObject<boolean>
   skipInteractive?:   boolean
-  engageOnMove?:      boolean
   containerClassName?: string
 }
 
 function LongPressPanController({
   panModeRef,
   skipInteractive = true,
-  engageOnMove = false,
   containerClassName,
 }: LongPressPanControllerProps) {
   const map = useMap()
@@ -205,9 +208,15 @@ function LongPressPanController({
   useEffect(() => {
     map.dragging.disable()
     const container = map.getContainer()
+    // Inline touch-action wins over Leaflet's own class/inline styles, which were
+    // leaving the effective value as something that still let the browser turn a
+    // one-finger drag into page scroll / pull-to-refresh.
+    const prevTouchAction = container.style.touchAction
+    container.style.touchAction = 'none'
     if (containerClassName) container.classList.add(containerClassName)
     return () => {
       map.dragging.enable()
+      container.style.touchAction = prevTouchAction
       if (containerClassName) container.classList.remove(containerClassName)
     }
   }, [map, containerClassName])
@@ -215,7 +224,6 @@ function LongPressPanController({
   useEffect(() => {
     const container = map.getContainer()
     let timer: ReturnType<typeof setTimeout> | null = null
-    let armed = false
     let panActive = false
     let activePointerId: number | null = null
     let lastX = 0
@@ -226,9 +234,8 @@ function LongPressPanController({
       panModeRef.current = true
       container.classList.add('geo-pan-active')
       document.documentElement.style.overscrollBehavior = 'none'
-      // Capture only now (pan confirmed). Capturing on pointerdown would retarget
-      // the subsequent click to the container and swallow Leaflet's polygon/marker
-      // selection clicks — so a tap could never select anything.
+      // Capture now (long-press confirmed). It happens while the finger is held,
+      // before the drag, so it never swallows a quick tap's selection click.
       if (activePointerId !== null) {
         try { container.setPointerCapture(activePointerId) } catch { /* ignore */ }
       }
@@ -237,34 +244,28 @@ function LongPressPanController({
     function onPointerDown(e: PointerEvent) {
       if (skipInteractive && (e.target as Element)?.closest?.('[data-geo-anchor]')) return
       panModeRef.current = false
-      armed = false
       panActive = false
       activePointerId = e.pointerId
       lastX = e.clientX
       lastY = e.clientY
-      timer = setTimeout(() => {
-        armed = true
-        if (!engageOnMove) engage()
-      }, LONG_PRESS_MS)
+      const ms = e.pointerType === 'touch' ? LONG_PRESS_MS_TOUCH : LONG_PRESS_MS_MOUSE
+      timer = setTimeout(engage, ms)
     }
 
     function onPointerMove(e: PointerEvent) {
+      if (e.pointerId !== activePointerId) return
       const dx = e.clientX - lastX
       const dy = e.clientY - lastY
       lastX = e.clientX
       lastY = e.clientY
-      // Engage on the first move after the hold armed (don't pan this frame, so
-      // there's no jump — the next move pans from here).
-      if (engageOnMove && armed && !panActive) { engage(); return }
       if (!panActive) return
       e.preventDefault()
-      e.stopPropagation()
       map.panBy([-dx, -dy], { animate: false })
     }
 
-    function onPointerUp() {
+    function onPointerUp(e: PointerEvent) {
+      if (activePointerId !== null && e.pointerId !== activePointerId) return
       if (timer) { clearTimeout(timer); timer = null }
-      armed = false
       panActive = false
       activePointerId = null
       container.classList.remove('geo-pan-active')
@@ -274,17 +275,31 @@ function LongPressPanController({
       }
     }
 
+    // Claim every touch gesture on the map: cancel the browser's default (page
+    // scroll / pull-to-refresh) on touchmove. pointermove.preventDefault() is
+    // unreliable for this; preventing the native touchmove is what actually keeps
+    // the gesture ours — so the pointer stream isn't killed mid-drag. Leaflet's
+    // two-finger pinch still works (its JS handlers run regardless of this).
+    function onTouchMove(e: TouchEvent) {
+      e.preventDefault()
+    }
+
+    // pointerdown on the container (the gesture must start on the map); move/up on
+    // document so the pan survives the finger leaving the container or the touch's
+    // implicit capture target being recycled.
     container.addEventListener('pointerdown', onPointerDown, { passive: false })
-    container.addEventListener('pointermove', onPointerMove, { passive: false })
+    container.addEventListener('touchmove',    onTouchMove,   { passive: false })
+    document.addEventListener('pointermove',   onPointerMove, { passive: false })
     document.addEventListener('pointerup',     onPointerUp)
     document.addEventListener('pointercancel', onPointerUp)
     return () => {
       container.removeEventListener('pointerdown', onPointerDown)
-      container.removeEventListener('pointermove', onPointerMove)
+      container.removeEventListener('touchmove',    onTouchMove)
+      document.removeEventListener('pointermove',   onPointerMove)
       document.removeEventListener('pointerup',     onPointerUp)
       document.removeEventListener('pointercancel', onPointerUp)
     }
-  }, [map, panModeRef, skipInteractive, engageOnMove])
+  }, [map, panModeRef, skipInteractive])
 
   return null
 }
@@ -806,10 +821,10 @@ export default function RealFarmMap({
         {/* View mode: Leaflet native layers */}
         {!inEditMode && (
           <>
+            {/* Static map; long-press to pan (same model as the edit modes). */}
             <LongPressPanController
               panModeRef={viewPanModeRef}
               skipInteractive={false}
-              engageOnMove
               containerClassName="geo-view-map"
             />
 
