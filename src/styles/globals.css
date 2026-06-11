@@ -142,6 +142,43 @@
   outline: none !important;
 }
 
+/* Illustrated SVG map: grabbing cursor while a long-press pan is engaged.
+   Toggled imperatively by useMapPanZoom; the !important beats the inline cursor. */
+.map-panning,
+.map-panning * {
+  cursor: grabbing !important;
+}
+
+/* View mode: static map, long-press activates pan. Divisions cover the whole
+   farm and must stay clickable (tap to select), so pan is allowed to start
+   anywhere and is only suppressed visually while a pan gesture is active. */
+.geo-view-map {
+  touch-action: none;
+}
+.geo-view-map.geo-pan-active,
+.geo-view-map.geo-pan-active * {
+  cursor: grabbing !important;
+}
+.geo-view-map.geo-pan-active .leaflet-interactive {
+  pointer-events: none !important;
+}
+
+/* Place/reposition mode: static map with crosshair (click drops the element),
+   long-press activates pan (grabbing). Same shape as demarcation. */
+.geo-place-map {
+  touch-action: none;
+}
+.geo-place-map:not(.geo-pan-active) {
+  cursor: crosshair !important;
+}
+.geo-place-map.geo-pan-active,
+.geo-place-map.geo-pan-active * {
+  cursor: grabbing !important;
+}
+.geo-place-map.geo-pan-active .leaflet-interactive {
+  pointer-events: none !important;
+}
+
 /* Edit-polygon mode: static map, long-press activates pan (no crosshair —
    base cursor stays default so anchor move/delete cursors remain visible). */
 .geo-edit-map {

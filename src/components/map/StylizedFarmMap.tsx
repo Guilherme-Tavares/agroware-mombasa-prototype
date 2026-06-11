@@ -149,10 +149,15 @@ export default function StylizedFarmMap({
     [feedTroughs, farmDivisions],
   )
 
-  const inEditMode  = mapMode.type !== 'view'
+  const isPlacing   = mapMode.type === 'place-element' || mapMode.type === 'reposition'
+  // Long-press pan is available in view + place/reposition; only polygon
+  // edit/draw keeps the SVG fully static.
+  const panEnabled  = mapMode.type !== 'edit-polygon' && mapMode.type !== 'draw-division'
   const internalApi = useMapPanZoom({
     viewBoxWidth: VIEWBOX_W, viewBoxHeight: VIEWBOX_H,
-    disabled: inEditMode,
+    disabled: !panEnabled,
+    longPressToPan: true,
+    longPressEngageOnArm: isPlacing,
   })
   const api = panZoomApi ?? internalApi
   const { svgRef, pan, zoom, wasDraggingRef, handlePointerDown, handlePointerMove, handlePointerUp } = api
@@ -192,40 +197,22 @@ export default function StylizedFarmMap({
     if (mapMode.type === 'edit-polygon') onDraftPolygonChange?.(draftPolygon)
   }, [draftPolygon, mapMode.type, onDraftPolygonChange])
 
-  // ── Cursor tracking (draw and place modes) ──────────────────────────────────
+  // ── Cursor tracking (draw, place and reposition modes) ──────────────────────
 
   const [cursorVB, setCursorVB] = useState<Point | null>(null)
-
-  // ── Reposition drag state ───────────────────────────────────────────────────
-
-  const [repoPos, setRepoPos] = useState<Point | null>(null)
-  const repoDraggingRef = useRef(false)
 
   // ── SVG event handlers ──────────────────────────────────────────────────────
 
   function handleSVGPointerMove(e: React.PointerEvent<SVGSVGElement>) {
     if (!svgRef.current) return
-    if (mapMode.type === 'draw-division' || mapMode.type === 'place-element') {
+    if (mapMode.type === 'draw-division' || isPlacing) {
       setCursorVB(screenToVB(e.clientX, e.clientY, svgRef.current, pan, zoom))
     }
-    if (mapMode.type === 'reposition' && repoDraggingRef.current) {
-      setRepoPos(screenToVB(e.clientX, e.clientY, svgRef.current, pan, zoom))
-    }
-    if (!inEditMode) handlePointerMove(e)
+    if (panEnabled) handlePointerMove(e)
   }
 
   function handleSVGPointerUp(e: React.PointerEvent<SVGSVGElement>) {
-    if (mapMode.type === 'reposition' && repoDraggingRef.current) {
-      repoDraggingRef.current = false
-      if (repoPos) {
-        const foundDiv = farmDivisions.find((d) => pointInPolygon(repoPos, d.polygon))
-        if (foundDiv) {
-          onElementReposition?.(mapMode.elementType, mapMode.elementId, repoPos, foundDiv.id)
-        }
-        setRepoPos(null)
-      }
-    }
-    if (!inEditMode) handlePointerUp(e)
+    if (panEnabled) handlePointerUp(e)
   }
 
   function handleSVGClick(e: React.MouseEvent<SVGSVGElement>) {
@@ -280,7 +267,10 @@ export default function StylizedFarmMap({
       onVertexAdd?.(snapped)
     }
 
-    if (mapMode.type === 'place-element' && !wasDraggingRef.current) {
+    // Place / reposition share the same click-to-drop logic: drop the element
+    // into the division under the cursor. A click that ended a long-press pan
+    // sets wasDraggingRef → suppressed here, so panning never repositions.
+    if ((mapMode.type === 'place-element' || mapMode.type === 'reposition') && !wasDraggingRef.current) {
       const pt = screenToVB(e.clientX, e.clientY, svgRef.current, pan, zoom)
       const foundDiv = farmDivisions.find((d) => pointInPolygon(pt, d.polygon))
       if (foundDiv) {
@@ -289,23 +279,12 @@ export default function StylizedFarmMap({
     }
   }
 
-  // ── Reposition start ────────────────────────────────────────────────────────
-
-  function handleRepoPointerDown(e: React.PointerEvent) {
-    if (mapMode.type !== 'reposition') return
-    e.stopPropagation()
-    repoDraggingRef.current = true
-    if (svgRef.current) setRepoPos(screenToVB(e.clientX, e.clientY, svgRef.current, pan, zoom))
-    try { ;(e.target as Element).setPointerCapture(e.pointerId) } catch { /* ignore */ }
-  }
-
   // ── Cursor style ────────────────────────────────────────────────────────────
 
   const svgCursor =
     mapMode.type === 'draw-division'  ? 'crosshair'
-    : mapMode.type === 'place-element'  ? 'crosshair'
+    : isPlacing                         ? 'crosshair'
     : mapMode.type === 'edit-polygon'   ? 'default'
-    : mapMode.type === 'reposition'     ? 'default'
     : 'grab'
 
   return (
@@ -313,7 +292,7 @@ export default function StylizedFarmMap({
       ref={svgRef}
       viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
       preserveAspectRatio="xMidYMid meet"
-      onPointerDown={inEditMode ? undefined : handlePointerDown}
+      onPointerDown={panEnabled ? handlePointerDown : undefined}
       onPointerMove={handleSVGPointerMove}
       onPointerUp={handleSVGPointerUp}
       onPointerCancel={handleSVGPointerUp}
@@ -403,23 +382,22 @@ export default function StylizedFarmMap({
           const c = herd.position ?? herdAnchorInDivision(div.polygon, troughPositions)
           const isSelected = selected?.type === 'herd' && selected.id === herd.id
           const isBeingRepositioned = mapMode.type === 'reposition' && mapMode.elementType === 'herd' && mapMode.elementId === herd.id
-          const displayPos = isBeingRepositioned && repoPos ? repoPos : c
           return (
             <HerdMarker
               key={`herd-${herd.id}`}
-              center={displayPos}
+              center={c}
               count={count}
               purpose={herd.purpose}
               isSelected={isSelected}
               dimmed={isBeingRepositioned}
+              interactive={!isPlacing}
               onClick={() => { if (!wasDraggingRef.current) onSelect({ type: 'herd', id: herd.id }) }}
-              onPointerDown={isBeingRepositioned ? handleRepoPointerDown : undefined}
             />
           )
         })}
 
-        {/* Layer 4b — Floating herd preview in place-element mode */}
-        {mapMode.type === 'place-element' && mapMode.elementType === 'herd' && cursorVB && (() => {
+        {/* Layer 4b — Floating herd preview in place/reposition mode */}
+        {(mapMode.type === 'place-element' || mapMode.type === 'reposition') && mapMode.elementType === 'herd' && cursorVB && (() => {
           const herd = herds.find((h) => h.id === mapMode.elementId)
           if (!herd) return null
           const inDiv = farmDivisions.some((d) => pointInPolygon(cursorVB, d.polygon))
@@ -431,6 +409,7 @@ export default function StylizedFarmMap({
               purpose={herd.purpose}
               isSelected={false}
               dimmed={!inDiv}
+              interactive={false}
               onClick={() => {}}
             />
           )
@@ -442,24 +421,23 @@ export default function StylizedFarmMap({
           const status = getHPStatus(pct)
           const isSelected = selected?.type === 'trough' && selected.id === t.id
           const isBeingRepositioned = mapMode.type === 'reposition' && mapMode.elementType === 'trough' && mapMode.elementId === t.id
-          const displayPos = isBeingRepositioned && repoPos ? repoPos : t.position
           return (
             <TroughMarker
               key={`trough-${t.id}`}
-              position={displayPos}
+              position={t.position}
               identifier={t.identifier}
               status={status}
               isSelected={isSelected}
               isCritical={status === 'alert'}
               dimmed={isBeingRepositioned}
+              interactive={!isPlacing}
               onClick={() => { if (!wasDraggingRef.current) onSelect({ type: 'trough', id: t.id }) }}
-              onPointerDown={isBeingRepositioned ? handleRepoPointerDown : undefined}
             />
           )
         })}
 
-        {/* Layer 5b — Floating trough preview in place-element mode */}
-        {mapMode.type === 'place-element' && mapMode.elementType === 'trough' && cursorVB && (() => {
+        {/* Layer 5b — Floating trough preview in place/reposition mode */}
+        {(mapMode.type === 'place-element' || mapMode.type === 'reposition') && mapMode.elementType === 'trough' && cursorVB && (() => {
           const trough = farmTroughs.find((t) => t.id === mapMode.elementId)
           if (!trough) return null
           const inDiv = farmDivisions.some((d) => pointInPolygon(cursorVB, d.polygon))
@@ -473,6 +451,7 @@ export default function StylizedFarmMap({
               isSelected={false}
               isCritical={false}
               dimmed={!inDiv}
+              interactive={false}
               onClick={() => {}}
             />
           )
@@ -522,26 +501,8 @@ export default function StylizedFarmMap({
 
       </g>
 
-      {/* Reposition mode: validation ring (rendered in SVG screen space) */}
-      {mapMode.type === 'reposition' && repoPos && (() => {
-        const screenX = (repoPos.x * zoom + pan.x) / VIEWBOX_W * 100
-        const screenY = (repoPos.y * zoom + pan.y) / VIEWBOX_H * 100
-        const inDiv = farmDivisions.some((d) => pointInPolygon(repoPos, d.polygon))
-        return (
-          <circle
-            cx={`${screenX}%`} cy={`${screenY}%`} r="4%"
-            fill="none"
-            stroke={inDiv ? '#2E7D32' : '#EF5350'}
-            strokeWidth="2"
-            strokeDasharray="6 4"
-            pointerEvents="none"
-            opacity="0.7"
-          />
-        )
-      })()}
-
-      {/* Place mode: cursor validation ring */}
-      {mapMode.type === 'place-element' && cursorVB && (() => {
+      {/* Place / reposition: cursor validation ring */}
+      {isPlacing && cursorVB && (() => {
         const inDiv = farmDivisions.some((d) => pointInPolygon(cursorVB, d.polygon))
         const screenX = (cursorVB.x * zoom + pan.x) / VIEWBOX_W * 100
         const screenY = (cursorVB.y * zoom + pan.y) / VIEWBOX_H * 100
@@ -898,18 +859,22 @@ interface HerdMarkerProps {
   purpose:    'recria' | 'engorda' | 'misto'
   isSelected: boolean
   dimmed?:    boolean
+  /** Quando false, o marcador não captura cliques (cursor passa direto). */
+  interactive?: boolean
   onClick:    () => void
-  onPointerDown?: (e: React.PointerEvent) => void
 }
 
-function HerdMarker({ center, count, purpose, isSelected, dimmed, onClick, onPointerDown }: HerdMarkerProps) {
+function HerdMarker({ center, count, purpose, isSelected, dimmed, interactive = true, onClick }: HerdMarkerProps) {
   const accent = purpose === 'engorda' ? '#5D4037' : '#2E7D32'
   return (
     <g transform={`translate(${center.x},${center.y})`}>
       <motion.g
-        style={{ cursor: onPointerDown ? 'grab' : 'pointer', opacity: dimmed ? 0.6 : 1 }}
-        onClick={onClick}
-        onPointerDown={onPointerDown}
+        style={{
+          cursor: interactive ? 'pointer' : 'inherit',
+          opacity: dimmed ? 0.6 : 1,
+          pointerEvents: interactive ? undefined : 'none',
+        }}
+        onClick={interactive ? onClick : undefined}
         animate={{ scale: isSelected ? 1.12 : 1 }}
         whileHover={{ scale: 1.08 }}
         transition={{ type: 'spring', stiffness: 300, damping: 22 }}
@@ -941,8 +906,9 @@ interface TroughMarkerProps {
   isSelected: boolean
   isCritical: boolean
   dimmed?:    boolean
+  /** Quando false, o marcador não captura cliques (cursor passa direto). */
+  interactive?: boolean
   onClick:    () => void
-  onPointerDown?: (e: React.PointerEvent) => void
 }
 
 const TROUGH_COLORS: Record<'ok' | 'warning' | 'alert', string> = {
@@ -951,14 +917,17 @@ const TROUGH_COLORS: Record<'ok' | 'warning' | 'alert', string> = {
   alert:   '#EF5350',
 }
 
-function TroughMarker({ position, identifier, status, isSelected, isCritical, dimmed, onClick, onPointerDown }: TroughMarkerProps) {
+function TroughMarker({ position, identifier, status, isSelected, isCritical, dimmed, interactive = true, onClick }: TroughMarkerProps) {
   const color = TROUGH_COLORS[status]
   return (
     <g transform={`translate(${position.x},${position.y})`}>
       <motion.g
-        style={{ cursor: onPointerDown ? 'grab' : 'pointer', opacity: dimmed ? 0.6 : 1 }}
-        onClick={onClick}
-        onPointerDown={onPointerDown}
+        style={{
+          cursor: interactive ? 'pointer' : 'inherit',
+          opacity: dimmed ? 0.6 : 1,
+          pointerEvents: interactive ? undefined : 'none',
+        }}
+        onClick={interactive ? onClick : undefined}
         animate={isCritical ? { scale: [1, 1.08, 1] } : { scale: isSelected ? 1.15 : 1 }}
         whileHover={{ scale: 1.12 }}
         transition={isCritical

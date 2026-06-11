@@ -125,9 +125,10 @@ interface FarmClickHandlerProps {
   farmGeo:      GeoPoint[]
   divisions:    Division[]
   onSelectFarm: () => void
+  panModeRef:   React.MutableRefObject<boolean>
 }
 
-function FarmClickHandler({ farmGeo, divisions, onSelectFarm }: FarmClickHandlerProps) {
+function FarmClickHandler({ farmGeo, divisions, onSelectFarm, panModeRef }: FarmClickHandlerProps) {
   const map = useMap()
 
   useMapEvent('mousemove', (e) => {
@@ -152,6 +153,7 @@ function FarmClickHandler({ farmGeo, divisions, onSelectFarm }: FarmClickHandler
   useMapEvent('mouseout', () => { map.getContainer().style.cursor = '' })
 
   useMapEvent('click', (e) => {
+    if (panModeRef.current) return
     const px = map.latLngToContainerPoint(e.latlng)
     const pt = { x: px.x, y: px.y }
 
@@ -173,38 +175,76 @@ function FarmClickHandler({ farmGeo, divisions, onSelectFarm }: FarmClickHandler
 }
 
 // ─── LongPressPanController ───────────────────────────────────────────────────
-// Identical logic to the one in GeoDemarcation.tsx, but the "don't intercept"
-// check targets [data-geo-anchor] (SVG anchors) instead of .leaflet-interactive.
+// Static map; a long-press (~100 ms) activates manual pan via map.panBy.
+//
+// Two usage modes:
+//  • Edit/draw (default): skipInteractive=true skips presses on [data-geo-anchor]
+//    so anchors stay clickable; the hold timer engages pan immediately.
+//  • View mode: skipInteractive=false (divisions cover the whole map, so pan must
+//    be allowed to start anywhere) + engageOnMove=true so a long stationary hold
+//    that never moves still counts as a tap (lets click-to-select fire), while a
+//    hold-then-drag pans. containerClassName applies the matching CSS class.
 
 const LONG_PRESS_MS = 100
 
-function LongPressPanController({ panModeRef }: { panModeRef: React.MutableRefObject<boolean> }) {
+interface LongPressPanControllerProps {
+  panModeRef:         React.MutableRefObject<boolean>
+  skipInteractive?:   boolean
+  engageOnMove?:      boolean
+  containerClassName?: string
+}
+
+function LongPressPanController({
+  panModeRef,
+  skipInteractive = true,
+  engageOnMove = false,
+  containerClassName,
+}: LongPressPanControllerProps) {
   const map = useMap()
 
   useEffect(() => {
     map.dragging.disable()
-    return () => { map.dragging.enable() }
-  }, [map])
+    const container = map.getContainer()
+    if (containerClassName) container.classList.add(containerClassName)
+    return () => {
+      map.dragging.enable()
+      if (containerClassName) container.classList.remove(containerClassName)
+    }
+  }, [map, containerClassName])
 
   useEffect(() => {
     const container = map.getContainer()
     let timer: ReturnType<typeof setTimeout> | null = null
+    let armed = false
     let panActive = false
+    let activePointerId: number | null = null
     let lastX = 0
     let lastY = 0
 
+    function engage() {
+      panActive = true
+      panModeRef.current = true
+      container.classList.add('geo-pan-active')
+      document.documentElement.style.overscrollBehavior = 'none'
+      // Capture only now (pan confirmed). Capturing on pointerdown would retarget
+      // the subsequent click to the container and swallow Leaflet's polygon/marker
+      // selection clicks — so a tap could never select anything.
+      if (activePointerId !== null) {
+        try { container.setPointerCapture(activePointerId) } catch { /* ignore */ }
+      }
+    }
+
     function onPointerDown(e: PointerEvent) {
-      if ((e.target as Element)?.closest?.('[data-geo-anchor]')) return
+      if (skipInteractive && (e.target as Element)?.closest?.('[data-geo-anchor]')) return
       panModeRef.current = false
+      armed = false
       panActive = false
+      activePointerId = e.pointerId
       lastX = e.clientX
       lastY = e.clientY
-      try { container.setPointerCapture(e.pointerId) } catch { /* ignore */ }
       timer = setTimeout(() => {
-        panModeRef.current = true
-        panActive = true
-        container.classList.add('geo-pan-active')
-        document.documentElement.style.overscrollBehavior = 'none'
+        armed = true
+        if (!engageOnMove) engage()
       }, LONG_PRESS_MS)
     }
 
@@ -213,6 +253,9 @@ function LongPressPanController({ panModeRef }: { panModeRef: React.MutableRefOb
       const dy = e.clientY - lastY
       lastX = e.clientX
       lastY = e.clientY
+      // Engage on the first move after the hold armed (don't pan this frame, so
+      // there's no jump — the next move pans from here).
+      if (engageOnMove && armed && !panActive) { engage(); return }
       if (!panActive) return
       e.preventDefault()
       e.stopPropagation()
@@ -221,7 +264,9 @@ function LongPressPanController({ panModeRef }: { panModeRef: React.MutableRefOb
 
     function onPointerUp() {
       if (timer) { clearTimeout(timer); timer = null }
+      armed = false
       panActive = false
+      activePointerId = null
       container.classList.remove('geo-pan-active')
       document.documentElement.style.overscrollBehavior = ''
       if (panModeRef.current) {
@@ -239,7 +284,7 @@ function LongPressPanController({ panModeRef }: { panModeRef: React.MutableRefOb
       document.removeEventListener('pointerup',     onPointerUp)
       document.removeEventListener('pointercancel', onPointerUp)
     }
-  }, [map, panModeRef])
+  }, [map, panModeRef, skipInteractive, engageOnMove])
 
   return null
 }
@@ -303,9 +348,13 @@ function GeoEditAnchorLayer({ initialPoly, otherGeoPoly, snapTargets = [], onCha
       newPx = snapToEdges(newPx, snapTargets.map((poly) => geoPolyToPixels(poly, map)), GEO_SNAP_PX)
     }
     const newGeo = p2g(newPx.x, newPx.y, map)
+    // Use the closure `idx`, never `dragRef.current` here: pointermove is a
+    // continuous event whose state update can be deferred/flushed AFTER a
+    // pointerup/pointercancel has already set dragRef.current = null, which would
+    // throw inside this updater and crash into the route error boundary.
     setLocalPoly((prev) => {
       const next = [...prev]
-      next[dragRef.current!.idx] = newGeo
+      next[idx] = newGeo
       return next
     })
   }
@@ -381,6 +430,10 @@ function GeoEditAnchorLayer({ initialPoly, otherGeoPoly, snapTargets = [], onCha
               onPointerDown={(e) => handleAnchorDown(e, i)}
               onPointerMove={(e) => handleAnchorMove(e, i)}
               onPointerUp={() => handleAnchorUp(i)}
+              // End the drag cleanly when the browser cancels the gesture (common
+              // on mobile). Clear the ref directly — routing to handleAnchorUp would
+              // misread a cancel as a click and delete the vertex.
+              onPointerCancel={() => { dragRef.current = null }}
               onClick={(e) => e.stopPropagation()}
             />
             {showDel && (
@@ -542,9 +595,10 @@ function SatelliteEditOverlay({
   const isPlacing = mapMode.type === 'place-element' || mapMode.type === 'reposition'
 
   useMapEvent('click', (e) => {
+    // A click that ends a long-press pan must not add a vertex or drop an element.
+    if (panModeRef.current) return
     const rawGeo = { lat: e.latlng.lat, lng: e.latlng.lng }
     if (mapMode.type === 'draw-division') {
-      if (panModeRef.current) return
       let finalGeo = rawGeo
       if (farmGeo.length >= 3) {
         const ptFlat:   Point   = { x: rawGeo.lng, y: rawGeo.lat }
@@ -575,7 +629,7 @@ function SatelliteEditOverlay({
   })
 
   useMapEvent('mousemove', (e) => {
-    if (mapMode.type !== 'draw-division') return
+    if (mapMode.type !== 'draw-division' && !isPlacing) return
     setCursorGeo({ lat: e.latlng.lat, lng: e.latlng.lng })
   })
 
@@ -585,11 +639,13 @@ function SatelliteEditOverlay({
     const container = map.getContainer()
     container.classList.toggle('geo-demarcation-map', mapMode.type === 'draw-division')
     container.classList.toggle('geo-edit-map',        mapMode.type === 'edit-polygon')
+    container.classList.toggle('geo-place-map',       isPlacing)
     return () => {
       container.classList.remove('geo-demarcation-map')
       container.classList.remove('geo-edit-map')
+      container.classList.remove('geo-place-map')
     }
-  }, [map, mapMode.type])
+  }, [map, mapMode.type, isPlacing])
 
   function handleVertexClick(i: number) {
     if (i === 0 && pendingGeoVertices.length >= 3) {
@@ -603,7 +659,7 @@ function SatelliteEditOverlay({
 
   return (
     <>
-      {(mapMode.type === 'edit-polygon' || mapMode.type === 'draw-division') && <LongPressPanController panModeRef={panModeRef} />}
+      {(mapMode.type === 'edit-polygon' || mapMode.type === 'draw-division' || isPlacing) && <LongPressPanController panModeRef={panModeRef} />}
       {createPortal(
     <svg
       style={{
@@ -675,6 +731,23 @@ function SatelliteEditOverlay({
           onVertexClick={handleVertexClick}
         />
       )}
+
+      {/* Place/reposition ghost preview following the crosshair */}
+      {isPlacing && cursorGeo && (mapMode.type === 'place-element' || mapMode.type === 'reposition') && (() => {
+        const px = g2p(cursorGeo, map)
+        const inDiv = !!findDivisionAtPixel(px.x, px.y, farmDivisions, map)
+        const color = inDiv ? '#2E7D32' : '#EF5350'
+        return (
+          <g style={{ pointerEvents: 'none' }} opacity={0.85}>
+            <circle cx={px.x} cy={px.y} r={18} fill="none" stroke={color} strokeWidth={2} strokeDasharray="5 4" opacity={0.7} />
+            {mapMode.elementType === 'herd' ? (
+              <circle cx={px.x} cy={px.y} r={10} fill={color} fillOpacity={0.9} stroke="#FFFFFF" strokeWidth={2} />
+            ) : (
+              <rect x={px.x - 9} y={px.y - 7} width={18} height={14} rx={4} fill={color} fillOpacity={0.9} stroke="#FFFFFF" strokeWidth={2} />
+            )}
+          </g>
+        )
+      })()}
     </svg>,
     container,
   )}
@@ -707,6 +780,10 @@ export default function RealFarmMap({
   const center: LatLng = farm?.geoCenter ? toLatLng(farm.geoCenter) : [-10.9295, -61.9912]
   const farmGeo = useMemo(() => farm?.geoPolygon ?? [], [farm])
 
+  // View-mode pan: true while a long-press pan is happening, so selection clicks
+  // (farm, division, herd, trough) are suppressed when the gesture was a pan.
+  const viewPanModeRef = useRef(false)
+
   return (
     <div className={`${className ?? ''} isolate`}>
       <MapContainer
@@ -729,10 +806,18 @@ export default function RealFarmMap({
         {/* View mode: Leaflet native layers */}
         {!inEditMode && (
           <>
+            <LongPressPanController
+              panModeRef={viewPanModeRef}
+              skipInteractive={false}
+              engageOnMove
+              containerClassName="geo-view-map"
+            />
+
             <FarmClickHandler
               farmGeo={farmGeo}
               divisions={divisions}
               onSelectFarm={() => onSelect({ type: 'farm' })}
+              panModeRef={viewPanModeRef}
             />
 
             {farmGeo.length >= 3 && (
@@ -762,6 +847,7 @@ export default function RealFarmMap({
                     fillOpacity: isSel ? 0.35 : 0.18,
                   }}
                   eventHandlers={{ click: (e: L.LeafletMouseEvent) => {
+                    if (viewPanModeRef.current) return
                     ;(e.originalEvent.target as HTMLElement | null)?.blur?.()
                     onSelect({ type: 'division', id: d.id })
                   } }}
@@ -783,7 +869,7 @@ export default function RealFarmMap({
                   center={geoCentroidLL(div.geoPolygon)}
                   radius={isSel ? 12 : 10}
                   pathOptions={{ color: '#FFFFFF', weight: 2, fillColor: accent, fillOpacity: 0.95 }}
-                  eventHandlers={{ click: () => onSelect({ type: 'herd', id: h.id }) }}
+                  eventHandlers={{ click: () => { if (!viewPanModeRef.current) onSelect({ type: 'herd', id: h.id }) } }}
                 >
                   <Tooltip direction="top" offset={[0, -8]}>{h.name}</Tooltip>
                 </CircleMarker>
@@ -801,7 +887,7 @@ export default function RealFarmMap({
                   center={toLatLng(t.geoPosition)}
                   radius={isSel ? 9 : 7}
                   pathOptions={{ color: '#FFFFFF', weight: 2, fillColor: HP_HEX[status], fillOpacity: 0.95 }}
-                  eventHandlers={{ click: () => onSelect({ type: 'trough', id: t.id }) }}
+                  eventHandlers={{ click: () => { if (!viewPanModeRef.current) onSelect({ type: 'trough', id: t.id }) } }}
                 >
                   <Tooltip direction="top" offset={[0, -6]}>
                     {t.identifier} · {Math.round(pct)}%

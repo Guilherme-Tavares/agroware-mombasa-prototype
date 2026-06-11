@@ -100,10 +100,16 @@ export default function MapPage() {
   const [mapMode, setMapMode] = useState<MapMode>({ type: 'view' })
   const inEditMode = mapMode.type !== 'view'
 
-  // Pan/zoom disabled when in non-view mode
+  // The illustrated map is static and panning requires a long-press. Pan is only
+  // fully disabled while editing/drawing polygons; view + place/reposition keep
+  // long-press pan available (mirrors the satellite layer behavior).
   const panZoomApi = useMapPanZoom({
     viewBoxWidth: 1000, viewBoxHeight: 700,
-    disabled: inEditMode,
+    disabled: mapMode.type === 'edit-polygon' || mapMode.type === 'draw-division',
+    longPressToPan: true,
+    // Em posicionar/reposicionar, segurar já entra em modo pan (não solta o
+    // elemento ao soltar); no view mode, hold parado ainda seleciona.
+    longPressEngageOnArm: mapMode.type === 'place-element' || mapMode.type === 'reposition',
   })
 
   const [baseLayer, setBaseLayer] = useState<MapBaseLayer>('satelite')
@@ -158,10 +164,14 @@ export default function MapPage() {
 
   function handleStartEdit(target: 'farm' | 'division', divisionId?: string) {
     setSelected(null)
-    latestDraftRef.current = null
-    // Pre-populate the satellite draft with the current polygon so that confirming
-    // without moving any anchor is valid. GeoEditAnchorLayer only fires onChange
-    // when the user actually drags an anchor, leaving the ref null otherwise.
+    // Pre-populate both layer drafts so confirming without any anchor drag is valid.
+    // The anchor layers only fire onChange when a drag actually occurs, so without
+    // pre-population the ref stays null and confirmation would fail with "Polígono inválido".
+    latestDraftRef.current = isIllustrated
+      ? target === 'farm'
+        ? (farm?.polygon ?? null)
+        : (divisions.find((d) => d.id === divisionId)?.polygon ?? null)
+      : null
     latestGeoDraftRef.current = !isIllustrated
       ? target === 'farm'
         ? (farm?.geoPolygon ?? null)
@@ -183,15 +193,18 @@ export default function MapPage() {
         if (!poly || poly.length < 3) { toast.error('Polígono inválido.'); return }
 
         if (mapMode.target === 'farm') {
-          // All existing divisions must be fully inside the new farm polygon
           const newFarmPts = poly.map(geoToPoint)
           const farmDivs = divisions.filter(
             (d) => d.farmId === farm?.id && (d.geoPolygon?.length ?? 0) >= 3,
           )
-          for (const div of farmDivs) {
-            if (!polygonContains(div.geoPolygon!.map(geoToPoint), newFarmPts)) {
-              toast.error('A nova área exclui ou cruza divisões internas. Expanda o contorno ou redefina as divisões primeiro.')
-              return
+          // Skip when the polygon is unchanged (same reference = no anchor was dragged).
+          // Avoids false positives from division vertices sitting exactly on the farm boundary.
+          if (poly !== farm?.geoPolygon) {
+            for (const div of farmDivs) {
+              if (!polygonContains(div.geoPolygon!.map(geoToPoint), newFarmPts)) {
+                toast.error('A nova área exclui ou cruza divisões internas. Expanda o contorno ou redefina as divisões primeiro.')
+                return
+              }
             }
           }
           updateFarm({
@@ -201,8 +214,11 @@ export default function MapPage() {
           toast.success('Demarcação da propriedade atualizada.')
 
         } else if (mapMode.divisionId) {
-          // Division must be inside farm and must not overlap other divisions
-          if (farm?.geoPolygon && farm.geoPolygon.length >= 3) {
+          // Division must be inside farm and must not overlap other divisions.
+          // Skip when unchanged (same ref = no anchor dragged) so confirming
+          // without editing never blocks, even if mock vertices touch a boundary.
+          const editedDiv = divisions.find((d) => d.id === mapMode.divisionId)
+          if (poly !== editedDiv?.geoPolygon && farm?.geoPolygon && farm.geoPolygon.length >= 3) {
             const farmPts = farm.geoPolygon.map(geoToPoint)
             const polyPts = poly.map(geoToPoint)
             if (!polygonContains(polyPts, farmPts)) {
@@ -263,14 +279,15 @@ export default function MapPage() {
       if (!poly || poly.length < 3) { toast.error('Polígono inválido.'); return }
 
       if (mapMode.target === 'farm') {
-        // All existing divisions must be fully inside the new farm polygon
         const farmDivs = divisions.filter(
           (d) => d.farmId === farm?.id && d.polygon.length >= 3,
         )
-        for (const div of farmDivs) {
-          if (!polygonContains(div.polygon, poly)) {
-            toast.error('A nova área exclui ou cruza divisões internas. Expanda o contorno ou redefina as divisões primeiro.')
-            return
+        if (poly !== farm?.polygon) {
+          for (const div of farmDivs) {
+            if (!polygonContains(div.polygon, poly)) {
+              toast.error('A nova área exclui ou cruza divisões internas. Expanda o contorno ou redefina as divisões primeiro.')
+              return
+            }
           }
         }
         updateFarm({
@@ -280,19 +297,25 @@ export default function MapPage() {
         toast.success('Demarcação da propriedade atualizada.')
 
       } else if (mapMode.divisionId && farm) {
-        // Division must be inside farm
-        if (farm.polygon.length >= 3 && !polygonContains(poly, farm.polygon)) {
-          toast.error('A nova demarcação extrapola a área da propriedade.')
-          return
-        }
-        // Division must not overlap other divisions
-        const others = divisions
-          .filter((d) => d.farmId === farm.id && d.id !== mapMode.divisionId)
-          .map((d) => d.polygon)
-        for (const other of others) {
-          if (polygonsOverlap(poly, other)) {
-            toast.error('A nova demarcação sobrepõe outra divisão existente.')
+        // Skip validation when unchanged (same ref = no anchor dragged) so
+        // confirming without editing never blocks, even if mock vertices touch
+        // a boundary.
+        const editedDiv = divisions.find((d) => d.id === mapMode.divisionId)
+        if (poly !== editedDiv?.polygon) {
+          // Division must be inside farm
+          if (farm.polygon.length >= 3 && !polygonContains(poly, farm.polygon)) {
+            toast.error('A nova demarcação extrapola a área da propriedade.')
             return
+          }
+          // Division must not overlap other divisions
+          const others = divisions
+            .filter((d) => d.farmId === farm.id && d.id !== mapMode.divisionId)
+            .map((d) => d.polygon)
+          for (const other of others) {
+            if (polygonsOverlap(poly, other)) {
+              toast.error('A nova demarcação sobrepõe outra divisão existente.')
+              return
+            }
           }
         }
         updateDivision(mapMode.divisionId, {

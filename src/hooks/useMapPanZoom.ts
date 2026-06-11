@@ -4,12 +4,27 @@ import type { Point } from '@/types/domain'
 const MIN_ZOOM = 0.5
 const MAX_ZOOM = 3
 const CLICK_THRESHOLD_PX = 5
+const LONG_PRESS_MS = 100
 
 interface UseMapPanZoomOptions {
   viewBoxWidth?:  number
   viewBoxHeight?: number
   /** Desativa pan/zoom (modo de edição de âncoras, desenho, reposicionamento). */
   disabled?: boolean
+  /**
+   * Mapa estático: o arraste de um ponteiro só panora após um long-press de
+   * ~100 ms. Um arraste curto não move o mapa, e um toque rápido continua
+   * selecionando elementos. Espelha o comportamento da camada satélite.
+   */
+  longPressToPan?: boolean
+  /**
+   * Ao armar o long-press (100 ms), já entra em modo pan mesmo sem mover:
+   * mostra o cursor grabbing e suprime o clique seguinte. Usado nos modos
+   * posicionar/reposicionar, onde segurar (e soltar) não deve soltar o
+   * elemento — só o toque rápido solta. No view mode fica `false`, para que um
+   * hold parado ainda conte como toque (seleção).
+   */
+  longPressEngageOnArm?: boolean
 }
 
 export interface MapPanZoomApi {
@@ -26,9 +41,11 @@ export interface MapPanZoomApi {
 }
 
 export function useMapPanZoom({
-  viewBoxWidth  = 1000,
-  viewBoxHeight = 700,
-  disabled      = false,
+  viewBoxWidth         = 1000,
+  viewBoxHeight        = 700,
+  disabled             = false,
+  longPressToPan       = false,
+  longPressEngageOnArm = false,
 }: UseMapPanZoomOptions = {}): MapPanZoomApi {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const [pan, setPan]   = useState<Point>({ x: 0, y: 0 })
@@ -43,6 +60,11 @@ export function useMapPanZoom({
   const isDraggingRef  = useRef(false)
   const wasDraggingRef = useRef(false)
   const dragStartRef   = useRef({ clientX: 0, clientY: 0, panX: 0, panY: 0 })
+
+  // Long-press gating (static map → pan only after holding). lpArmedRef becomes
+  // true once the hold timer fires; only then does a drag engage the pan.
+  const lpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lpArmedRef = useRef(false)
 
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
   const pinchStateRef = useRef<{
@@ -109,7 +131,24 @@ export function useMapPanZoom({
         panX:    pan.x,
         panY:    pan.y,
       }
+      // Static map: arm the pan only after a long-press. Without longPressToPan,
+      // arm immediately so behavior is unchanged for other callers.
+      lpArmedRef.current = !longPressToPan
+      if (lpTimerRef.current) { clearTimeout(lpTimerRef.current); lpTimerRef.current = null }
+      if (longPressToPan) {
+        lpTimerRef.current = setTimeout(() => {
+          lpArmedRef.current = true
+          // Engata o modo pan já ao armar (sem precisar mover): grabbing + clique
+          // suprimido, para que segurar-e-soltar não dispare o clique-para-soltar.
+          if (longPressEngageOnArm) {
+            wasDraggingRef.current = true
+            svgRef.current?.classList.add('map-panning')
+          }
+        }, LONG_PRESS_MS)
+      }
     } else if (pointersRef.current.size === 2) {
+      // Pinch zoom is unaffected by long-press gating.
+      if (lpTimerRef.current) { clearTimeout(lpTimerRef.current); lpTimerRef.current = null }
       const ptrs = Array.from(pointersRef.current.values())
       const dist = Math.hypot(ptrs[0].x - ptrs[1].x, ptrs[0].y - ptrs[1].y)
       const centerClient = {
@@ -152,10 +191,24 @@ export function useMapPanZoom({
       const dy = e.clientY - dragStartRef.current.clientY
 
       if (!isDraggingRef.current && Math.hypot(dx, dy) > CLICK_THRESHOLD_PX) {
-        isDraggingRef.current = true
-        wasDraggingRef.current = true
-        // Captura só agora (arraste confirmado), para não atrapalhar o clique.
-        try { svgRef.current?.setPointerCapture(e.pointerId) } catch { /* ignore */ }
+        if (lpArmedRef.current) {
+          isDraggingRef.current = true
+          wasDraggingRef.current = true
+          // Re-baseline para o ponto atual: se o ponteiro se moveu enquanto o
+          // long-press ainda não havia armado, o pan começa daqui sem salto.
+          dragStartRef.current = {
+            clientX: e.clientX, clientY: e.clientY,
+            panX: panRef.current.x, panY: panRef.current.y,
+          }
+          // Cursor grabbing enquanto panora (vence o cursor inline via !important).
+          svgRef.current?.classList.add('map-panning')
+          // Captura só agora (arraste confirmado), para não atrapalhar o clique.
+          try { svgRef.current?.setPointerCapture(e.pointerId) } catch { /* ignore */ }
+        } else {
+          // Long-press ainda não armado: arraste curto não panora (mapa estático),
+          // mas suprime o clique para não selecionar acidentalmente num swipe.
+          wasDraggingRef.current = true
+        }
       }
 
       if (isDraggingRef.current) {
@@ -164,9 +217,11 @@ export function useMapPanZoom({
         const rect = svg.getBoundingClientRect()
         const sx = viewBoxWidth  / rect.width
         const sy = viewBoxHeight / rect.height
+        const ddx = e.clientX - dragStartRef.current.clientX
+        const ddy = e.clientY - dragStartRef.current.clientY
         setPan({
-          x: dragStartRef.current.panX + dx * sx,
-          y: dragStartRef.current.panY + dy * sy,
+          x: dragStartRef.current.panX + ddx * sx,
+          y: dragStartRef.current.panY + ddy * sy,
         })
       }
     }
@@ -174,6 +229,8 @@ export function useMapPanZoom({
 
   function handlePointerUp(e: React.PointerEvent<SVGSVGElement>) {
     if (disabled) return
+    if (lpTimerRef.current) { clearTimeout(lpTimerRef.current); lpTimerRef.current = null }
+    lpArmedRef.current = false
     pointersRef.current.delete(e.pointerId)
     try { svgRef.current?.releasePointerCapture(e.pointerId) } catch { /* ignore */ }
 
@@ -182,6 +239,7 @@ export function useMapPanZoom({
     }
     if (pointersRef.current.size === 0) {
       isDraggingRef.current = false
+      svgRef.current?.classList.remove('map-panning')
       // wasDraggingRef stays true until next pointerdown — suppresses synthetic click
     }
   }

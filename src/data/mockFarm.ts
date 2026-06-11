@@ -155,20 +155,25 @@ const farm: Farm = {
   state: 'RO',
   totalArea: 97.2,
   perimeter: 4853,
+  // Contorno quase-retangular com um canto inferior-esquerdo levemente recuado
+  // (76,640) para manter aparência de demarcação manual. As bordas superior,
+  // direita e inferior são retas para que os piquetes (que tangenciam essas
+  // bordas) fiquem estritamente contidos na fazenda — sem isso, a validação de
+  // edição rejeita a divisão por cruzamento de aresta. O geoPolygon é a projeção
+  // afim exata deste polígono (relativeToGeo), garantindo que contenção no
+  // viewbox implique contenção em lat/lng.
   polygon: [
     { x: 76,  y: 640 },
-    { x: 930, y: 639 },
-    { x: 940, y: 60  },
+    { x: 940, y: 640 },
     { x: 940, y: 60  },
     { x: 60,  y: 60  },
   ],
   geoCenter: GEO_CENTER,
   geoPolygon: [
-    { lat: -10.792587470179175, lng: -61.770406642734066 },
-    { lat: -10.792552387885301, lng: -61.7658508801402   },
+    { lat: -10.792587470179175, lng: -61.770408505031995 },
+    { lat: -10.792587470179175, lng: -61.76579783178139  },
     { lat: -10.775310791557718, lng: -61.76579783178139  },
-    { lat: -10.775310791557718, lng: -61.76579783178139  },
-    { lat: -10.775319285558487, lng: -61.77049388786997  },
+    { lat: -10.775310791557718, lng: -61.77049388786997  },
   ],
   mapBaseCapturedAt: null,
   ...audit,
@@ -269,8 +274,8 @@ const divisions: Division[] = [
     id: 'div_sf_03', farmId: FARM_ID, name: 'Piquete 3', area: 17.8, type: 'pasto',
     status: 'active', forageId: 'forage_02', forageStartDate: '2025-06-01',
     polygon: [
-      { x: 70,  y: 350 }, { x: 390, y: 350 },
-      { x: 390, y: 638 }, { x: 70,  y: 638 },
+      { x: 78,  y: 350 }, { x: 390, y: 350 },
+      { x: 390, y: 638 }, { x: 78,  y: 638 },
     ],
     ...audit,
   },
