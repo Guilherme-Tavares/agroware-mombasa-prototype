@@ -283,7 +283,9 @@ export default function StylizedFarmMap({
 
   const svgCursor =
     mapMode.type === 'draw-division'  ? 'crosshair'
-    : isPlacing                         ? 'crosshair'
+    // Place/reposition: hide the pointer — the element ghost is the guide.
+    // (.map-panning overrides with grabbing while a long-press pan is active.)
+    : isPlacing                         ? 'none'
     : mapMode.type === 'edit-polygon'   ? 'default'
     : 'grab'
 
