@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Wifi, WifiOff, ChevronRight } from 'lucide-react'
@@ -34,8 +34,14 @@ export default function Login() {
   const [mode, setMode] = useState<LoginMode>('offline')
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [name, setName]         = useState('')
   const [loading, setLoading]   = useState(false)
+
+  // Campo "Seu nome" NÃO-controlado (via ref): o teste estático provou que o
+  // teclado capitaliza em inputs HTML puros, mas não no nosso input controlado
+  // pelo React — o React reescreve o `value` do elemento e isso suprime a
+  // capitalização automática do teclado no Samsung Internet. Lemos o valor no
+  // submit.
+  const nameRef = useRef<HTMLInputElement>(null)
 
   function handleEmailLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -48,12 +54,13 @@ export default function Login() {
     }, 600)
   }
 
-  function handleOfflineLogin(e: React.FormEvent) {
-    e.preventDefault()
+  function handleOfflineLogin() {
+    const nameValue = (nameRef.current?.value ?? '').trim()
+    if (!nameValue) { nameRef.current?.focus(); return }
     setLoading(true)
     setTimeout(() => {
-      loginOffline(name)
-      updateCurrentUser({ name: name.trim(), email: null, online: false })
+      loginOffline(nameValue)
+      updateCurrentUser({ name: nameValue, email: null, online: false })
       setSidebarOpen(false)
       navigate('/', { replace: true })
     }, 500)
@@ -169,13 +176,16 @@ export default function Login() {
                 </Button>
               </motion.form>
             ) : (
-              <motion.form
+              <motion.div
                 key="offline-form"
                 variants={formVariants}
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                onSubmit={handleOfflineLogin}
+                // SEM <form> de propósito: neste navegador (Samsung Internet) um
+                // <input> dentro de <form> não dispara a capitalização do teclado
+                // (nem com autocapitalize no input nem no form). Submetemos pelo
+                // botão (onClick) e pela tecla Enter, com validação em JS.
                 className="space-y-5"
               >
                 <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3">
@@ -183,17 +193,29 @@ export default function Login() {
                     Modo offline: seus dados ficam apenas neste dispositivo.
                   </p>
                 </div>
-                <Input
-                  id="login-name"
-                  label="Seu nome"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  type="text"
-                  autoCapitalize="sentences"
-                  required
-                />
+                {/* Campo "Seu nome" como <input> simples, SEM placeholder — espelha
+                    o elemento do site cujo teclado capitaliza. O label flutuante do
+                    componente Input depende de placeholder=" " (truque CSS peer),
+                    o último atributo que ainda nos diferenciava daquele elemento.
+                    Por isso aqui usamos label fixo em cima e um input puro. */}
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="login-name" className="text-xs font-medium text-primary">
+                    Seu nome <span className="text-alert">*</span>
+                  </label>
+                  <input
+                    id="login-name"
+                    name="nome"
+                    ref={nameRef}
+                    type="text"
+                    autoComplete="given-name"
+                    required
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleOfflineLogin() } }}
+                    className="block w-full rounded-input border border-gray-200 bg-white text-body text-gray-900 py-3 px-4 outline-none transition-all duration-150 focus:border-primary focus:ring-1 focus:ring-primary"
+                  />
+                </div>
                 <Button
-                  type="submit"
+                  type="button"
+                  onClick={handleOfflineLogin}
                   variant="secondary"
                   fullWidth
                   loading={loading}
@@ -201,7 +223,7 @@ export default function Login() {
                 >
                   Entrar offline
                 </Button>
-              </motion.form>
+              </motion.div>
             )}
           </AnimatePresence>
 
