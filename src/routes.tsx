@@ -3,6 +3,7 @@ import { createBrowserRouter } from 'react-router-dom'
 import AppShell, { ProtectedRoute } from '@/components/layout/AppShell.tsx'
 import RouteFallback from '@/components/layout/RouteFallback.tsx'
 import RouteError from '@/components/RouteError.tsx'
+import PlaceholderScreen from '@/components/PlaceholderScreen.tsx'
 import Login from '@/pages/Login/index.tsx'
 
 // Telas carregadas sob demanda (code-splitting por rota) vêm de `@/lazyPages`.
@@ -144,6 +145,49 @@ export const router = createBrowserRouter([
           { path: 'medication-stock/new', element: <MedicationStockRegister /> },
           { path: 'feed-stock', element: <FeedStockList /> },
           { path: 'feed-stock/new', element: <FeedStockRegister /> },
+          // Telas provisórias (serão consolidadas/implementadas depois):
+          // Estoques e Históricos unificarão as telas atuais num alternador; GMD
+          // ganhará gráfico e lógica própria. Ver PlaceholderScreen.
+          {
+            path: 'stock',
+            element: (
+              <PlaceholderScreen
+                title="Estoques"
+                note="Esta tela vai unificar os estoques (medicamentos e alimentos) com um alternador — em construção. Por ora, acesse cada um:"
+                links={[
+                  { to: '/medication-stock', label: 'Estoque de medicamentos' },
+                  { to: '/feed-stock', label: 'Estoque de alimentos' },
+                ]}
+              />
+            ),
+          },
+          {
+            path: 'history',
+            element: (
+              <PlaceholderScreen
+                title="Históricos"
+                note="Esta tela vai unificar todos os históricos com um alternador por tipo — em construção. Por ora, acesse cada um:"
+                links={[
+                  { to: '/history/weighings', label: 'Pesagens' },
+                  { to: '/history/applications', label: 'Aplicações' },
+                  { to: '/history/refills', label: 'Abastecimentos' },
+                  { to: '/history/allocations', label: 'Lotações' },
+                  { to: '/history/memberships', label: 'Pertencimentos' },
+                  { to: '/history/passages', label: 'Passagens (GMD)' },
+                  { to: '/history/transfers', label: 'Transferências' },
+                ]}
+              />
+            ),
+          },
+          {
+            path: 'gmd',
+            element: (
+              <PlaceholderScreen
+                title="GMD"
+                note="Ganho médio diário — gráfico e análise com lógica própria. Em construção."
+              />
+            ),
+          },
           { path: 'profile', element: <Profile /> },
           { path: 'settings', element: <Settings /> },
           { path: 'access', element: <Access /> },

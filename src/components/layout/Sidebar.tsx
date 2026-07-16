@@ -2,37 +2,39 @@ import { NavLink } from 'react-router-dom'
 import {
   Home,
   Map,
-  Beef,
-  Layers,
-  Users,
-  CalendarRange,
-  Droplets,
-  Pill,
-  Wheat,
-  Sprout,
   MapPinned,
-  Stethoscope,
   ListTodo,
-  DollarSign,
+  Layers,
+  Droplets,
+  Droplet,
+  Sprout,
+  CircleSmall,
+  CirclePile,
+  Wheat,
+  Pill,
+  Warehouse,
+  Link2,
   ArrowLeftRight,
   Scale,
-  TrendingUp,
-  PackagePlus,
-  Syringe,
-  Droplets as DropletsOp,
-  ClipboardCheck,
-  Link2,
   Truck,
-  Receipt,
-  Package,
+  TrendingUp,
+  CalendarRange,
+  Milestone,
+  Syringe,
+  CalendarDays,
+  ClipboardCheck,
   Tag,
-  History,
+  Package,
+  Receipt,
+  DollarSign,
   BarChart2,
+  History,
+  UserCircle,
+  Users,
+  UserPlus,
   Settings,
   HelpCircle,
   LogOut,
-  UserCircle,
-  UserCog,
   X,
 } from 'lucide-react'
 import { useUIStore } from '@/store/useUIStore'
@@ -47,89 +49,86 @@ interface NavItem {
   end?: boolean
 }
 
-const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
+const NAV_SECTIONS: { title?: string; items: NavItem[] }[] = [
   {
-    title: 'Principal',
     items: [
       { to: '/', label: 'Início', icon: <Home size={18} />, end: true },
       { to: '/map', label: 'Mapa', icon: <Map size={18} /> },
+      { to: '/properties', label: 'Propriedades', icon: <MapPinned size={18} />, end: true },
+      { to: '/tasks', label: 'Tarefas', icon: <ListTodo size={18} />, end: true },
     ],
   },
   {
-    title: 'Cadastros',
+    title: 'Terra',
     items: [
-      { to: '/properties', label: 'Propriedades', icon: <MapPinned size={18} />, end: true },
-      { to: '/bovines', label: 'Bovinos', icon: <Beef size={18} />, end: true },
       { to: '/divisions', label: 'Divisões', icon: <Layers size={18} />, end: true },
-      { to: '/herds', label: 'Rebanhos', icon: <Users size={18} />, end: true },
       { to: '/troughs', label: 'Cochos', icon: <Droplets size={18} />, end: true },
       { to: '/forages', label: 'Forragem', icon: <Sprout size={18} />, end: true },
-      { to: '/seasons', label: 'Temporadas', icon: <CalendarRange size={18} />, end: true },
+    ],
+  },
+  {
+    title: 'Gado',
+    items: [
+      { to: '/bovines', label: 'Bovinos', icon: <CircleSmall size={18} />, end: true },
+      { to: '/herds', label: 'Rebanhos', icon: <CirclePile size={18} />, end: true },
     ],
   },
   {
     title: 'Insumos',
     items: [
-      { to: '/medications', label: 'Medicamentos', icon: <Pill size={18} />, end: true },
       { to: '/feeds', label: 'Alimentos', icon: <Wheat size={18} />, end: true },
-      { to: '/medication-stock', label: 'Estoque medicamento', icon: <PackagePlus size={18} />, end: true },
-      { to: '/feed-stock', label: 'Estoque alimento', icon: <PackagePlus size={18} />, end: true },
+      { to: '/medications', label: 'Medicamentos', icon: <Pill size={18} />, end: true },
+      { to: '/stock', label: 'Estoques', icon: <Warehouse size={18} />, end: true },
     ],
   },
   {
-    title: 'Sanidade & Agenda',
+    title: 'Manejo',
     items: [
-      { to: '/sanitary-events', label: 'Calendário sanitário', icon: <Stethoscope size={18} />, end: true },
-      { to: '/tasks', label: 'Tarefas', icon: <ListTodo size={18} />, end: true },
+      { to: '/operations/membership', label: 'Pertencimento', icon: <Link2 size={18} /> },
+      { to: '/operations/allocation', label: 'Lotação', icon: <ArrowLeftRight size={18} /> },
+      { to: '/operations/weighing', label: 'Pesagem', icon: <Scale size={18} /> },
+      { to: '/operations/bovine-transfer', label: 'Transferência', icon: <Truck size={18} /> },
     ],
   },
   {
-    title: 'Históricos',
+    title: 'Evolução',
     items: [
-      { to: '/history/weighings', label: 'Pesagens', icon: <History size={18} /> },
-      { to: '/history/applications', label: 'Aplicações', icon: <History size={18} /> },
-      { to: '/history/refills', label: 'Abastecimentos', icon: <History size={18} /> },
-      { to: '/history/allocations', label: 'Lotações', icon: <History size={18} /> },
-      { to: '/history/memberships', label: 'Pertencimentos', icon: <History size={18} /> },
-      { to: '/history/passages', label: 'Passagens (GMD)', icon: <History size={18} /> },
-      { to: '/history/transfers', label: 'Transferências', icon: <History size={18} /> },
+      { to: '/gmd', label: 'GMD', icon: <TrendingUp size={18} />, end: true },
+      { to: '/seasons', label: 'Temporadas', icon: <CalendarRange size={18} />, end: true },
+      { to: '/operations/season-passage', label: 'Passagem', icon: <Milestone size={18} /> },
+    ],
+  },
+  {
+    title: 'Alimentação & Sanidade',
+    items: [
+      { to: '/operations/supply', label: 'Abastecimento', icon: <Droplet size={18} /> },
+      { to: '/operations/medication-application', label: 'Aplicação', icon: <Syringe size={18} /> },
+      { to: '/sanitary-events', label: 'Calendário sanitário', icon: <CalendarDays size={18} />, end: true },
+      { to: '/operations/sanitary-execution', label: 'Executar eventos', icon: <ClipboardCheck size={18} /> },
     ],
   },
   {
     title: 'Financeiro',
     items: [
-      { to: '/expenses', label: 'Despesas', icon: <Receipt size={18} />, end: true },
-      { to: '/expense-categories', label: 'Categorias de despesa', icon: <DollarSign size={18} />, end: true },
-      { to: '/sale-lots', label: 'Lotes comerciais', icon: <Package size={18} />, end: true },
       { to: '/sales', label: 'Vendas', icon: <Tag size={18} />, end: true },
+      { to: '/sale-lots', label: 'Lotes comerciais', icon: <Package size={18} />, end: true },
+      { to: '/expenses', label: 'Despesas', icon: <Receipt size={18} />, end: true },
+      { to: '/expense-categories', label: 'Categorias', icon: <DollarSign size={18} />, end: true },
     ],
   },
   {
-    title: 'Operações',
-    items: [
-      { to: '/operations/allocation', label: 'Lotação', icon: <ArrowLeftRight size={18} /> },
-      { to: '/operations/weighing', label: 'Pesagem', icon: <Scale size={18} /> },
-      { to: '/operations/season-passage', label: 'Passagem (GMD)', icon: <TrendingUp size={18} /> },
-      { to: '/operations/medication-application', label: 'Aplicação', icon: <Syringe size={18} /> },
-      { to: '/operations/supply', label: 'Abastecimento', icon: <DropletsOp size={18} /> },
-      { to: '/operations/sanitary-execution', label: 'Executar eventos', icon: <ClipboardCheck size={18} /> },
-      { to: '/operations/membership', label: 'Pertencimento', icon: <Link2 size={18} /> },
-      { to: '/operations/bovine-transfer', label: 'Transferência', icon: <Truck size={18} /> },
-    ],
-  },
-  {
-    title: 'Relatórios',
+    title: 'Dados',
     items: [
       { to: '/reports', label: 'Relatórios', icon: <BarChart2 size={18} /> },
+      { to: '/history', label: 'Históricos', icon: <History size={18} />, end: true },
     ],
   },
   {
-    title: 'Conta',
+    title: 'Conta & Acesso',
     items: [
       { to: '/profile', label: 'Perfil', icon: <UserCircle size={18} />, end: true },
-      { to: '/access', label: 'Acesso e usuários', icon: <UserCog size={18} />, end: true },
-      { to: '/users-invites', label: 'Usuários e convites', icon: <Users size={18} />, end: true },
-      { to: '/settings', label: 'Configurações', icon: <Settings size={18} />, end: true },
+      { to: '/access', label: 'Usuários', icon: <Users size={18} />, end: true },
+      { to: '/users-invites', label: 'Convites', icon: <UserPlus size={18} />, end: true },
     ],
   },
 ]
@@ -192,11 +191,13 @@ export default function Sidebar() {
 
         {/* nav */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
-          {NAV_SECTIONS.map((section) => (
-            <div key={section.title}>
-              <p className="px-3 mb-1.5 text-caption font-medium text-gray-400 uppercase tracking-wide">
-                {section.title}
-              </p>
+          {NAV_SECTIONS.map((section, i) => (
+            <div key={section.title ?? `top-${i}`}>
+              {section.title && (
+                <p className="px-3 mb-1.5 text-caption font-medium text-gray-400 uppercase tracking-wide">
+                  {section.title}
+                </p>
+              )}
               <ul className="space-y-0.5">
                 {section.items.map((item) => (
                   <li key={item.to}>
@@ -209,6 +210,9 @@ export default function Sidebar() {
 
           <div>
             <ul className="space-y-0.5">
+              <li>
+                <NavItemLink to="/settings" label="Configurações" icon={<Settings size={18} />} end />
+              </li>
               <li>
                 <a
                   href="#"
