@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronLeft, Users, Pencil, Trash2, RotateCcw, Beef, TrendingUp } from 'lucide-react'
+import { ChevronLeft, CirclePile, Pencil, Trash2, RotateCcw, Beef, TrendingUp } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { useFarmStore } from '@/store/useFarmStore'
@@ -55,7 +55,7 @@ export default function HerdDetail() {
     return (
       <div className="max-w-xl mx-auto">
         <EmptyState
-          icon={<Users size={28} />}
+          icon={<CirclePile size={28} />}
           title="Rebanho não encontrado"
           description="O registro pode ter sido removido em definitivo."
           action={{ label: 'Voltar à lista', onClick: () => navigate('/herds') }}

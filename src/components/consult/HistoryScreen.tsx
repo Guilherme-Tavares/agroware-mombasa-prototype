@@ -1,6 +1,13 @@
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Search } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
+
+/**
+ * Quando true, a tela de histórico é renderizada "embutida" na tela unificada
+ * de Históricos (que fornece as abas de tipo). Nesse caso o botão "voltar" é
+ * omitido — a navegação entre tipos é feita pelas abas, não pelo voltar.
+ */
+export const HistoryEmbeddedContext = createContext(false)
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Tela de histórico (consulta somente leitura) para registros de operação —
@@ -22,17 +29,20 @@ export default function HistoryScreen({
   title, count, search, onSearch, searchPlaceholder = 'Buscar...', children,
 }: HistoryScreenProps) {
   const navigate = useNavigate()
+  const embedded = useContext(HistoryEmbeddedContext)
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className={embedded ? '' : 'max-w-2xl mx-auto'}>
       <div className="flex items-center gap-3 mb-5">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors text-gray-600 shrink-0"
-          aria-label="Voltar"
-        >
-          <ChevronLeft size={22} />
-        </button>
+        {!embedded && (
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors text-gray-600 shrink-0"
+            aria-label="Voltar"
+          >
+            <ChevronLeft size={22} />
+          </button>
+        )}
         <div className="flex-1 min-w-0">
           <h1 className="text-title font-bold text-gray-900">{title}</h1>
           <p className="text-caption text-gray-400">{count} registro{count !== 1 ? 's' : ''}</p>

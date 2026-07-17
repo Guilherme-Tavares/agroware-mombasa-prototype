@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Beef, ChevronRight } from 'lucide-react'
+import { CircleSmall, ChevronRight } from 'lucide-react'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useAccess } from '@/hooks/useAccess'
@@ -51,7 +51,7 @@ export default function BovineList() {
     >
       {filtered.length === 0 ? (
         <EmptyState
-          icon={<Beef size={28} />}
+          icon={<CircleSmall size={28} />}
           title={search ? 'Nenhum bovino encontrado' : 'Nenhum bovino'}
           description={search ? 'Ajuste a busca ou inclua inativos.' : 'Cadastre o primeiro animal do rebanho.'}
           action={can.writeHusbandry ? { label: 'Novo bovino', onClick: () => navigate('/bovines/new') } : undefined}
@@ -73,7 +73,7 @@ export default function BovineList() {
                 <span className="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden flex items-center justify-center shrink-0">
                   {b.photoBase64
                     ? <img src={b.photoBase64} alt="" className="w-full h-full object-cover" />
-                    : <Beef size={18} className="text-gray-300" />}
+                    : <CircleSmall size={18} className="text-gray-300" />}
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">

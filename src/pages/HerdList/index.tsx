@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Users, ChevronRight } from 'lucide-react'
+import { CirclePile, ChevronRight } from 'lucide-react'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useAccess } from '@/hooks/useAccess'
@@ -52,7 +52,7 @@ export default function HerdList() {
     >
       {filtered.length === 0 ? (
         <EmptyState
-          icon={<Users size={28} />}
+          icon={<CirclePile size={28} />}
           title={search ? 'Nenhum rebanho encontrado' : 'Nenhum rebanho'}
           description={search ? 'Ajuste a busca ou inclua inativos.' : 'Crie lotes para agrupar bovinos.'}
           action={can.writeHusbandry ? { label: 'Novo rebanho', onClick: () => navigate('/herds/new') } : undefined}
@@ -72,7 +72,7 @@ export default function HerdList() {
                 )}
               >
                 <span className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                  <Users size={18} className="text-gray-400" />
+                  <CirclePile size={18} className="text-gray-400" />
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">

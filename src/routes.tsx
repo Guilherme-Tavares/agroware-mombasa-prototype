@@ -20,12 +20,12 @@ import {
   UsersInvitesList, Notifications, ReportsIndex, ExpenseReport, PurchaseReport, SalesReport,
   ApplicationReport, RefillReport, PerformanceReport, InventoryReport,
   ForageRegister, ForageList, ForageDetail, MedicationStockRegister, MedicationStockList,
-  FeedStockRegister, FeedStockList, WeighingRegister, SeasonPassageRegister,
+  FeedStockRegister, FeedStockList, StockList, WeighingRegister, SeasonPassageRegister,
   MedicationApplicationRegister, SupplyRegister, SanitaryEventExecution, MembershipRegister,
   BovineTransferRegister, ExpenseRegister, ExpenseList, ExpenseDetail,
   SaleLotRegister, SaleLotList, SaleLotDetail, SaleRegister, SaleList, SaleDetail,
   HerdAllocation, MapBaseConfig, WeighingHistory, ApplicationHistory, RefillHistory,
-  AllocationHistory, MembershipHistory, PassageHistory, TransferHistory,
+  AllocationHistory, MembershipHistory, PassageHistory, TransferHistory, HistoryList,
   Profile, Settings, Access, FeedTroughDetail, DevComponents,
 } from '@/lazyPages.ts'
 
@@ -148,37 +148,8 @@ export const router = createBrowserRouter([
           // Telas provisórias (serão consolidadas/implementadas depois):
           // Estoques e Históricos unificarão as telas atuais num alternador; GMD
           // ganhará gráfico e lógica própria. Ver PlaceholderScreen.
-          {
-            path: 'stock',
-            element: (
-              <PlaceholderScreen
-                title="Estoques"
-                note="Esta tela vai unificar os estoques (medicamentos e alimentos) com um alternador — em construção. Por ora, acesse cada um:"
-                links={[
-                  { to: '/medication-stock', label: 'Estoque de medicamentos' },
-                  { to: '/feed-stock', label: 'Estoque de alimentos' },
-                ]}
-              />
-            ),
-          },
-          {
-            path: 'history',
-            element: (
-              <PlaceholderScreen
-                title="Históricos"
-                note="Esta tela vai unificar todos os históricos com um alternador por tipo — em construção. Por ora, acesse cada um:"
-                links={[
-                  { to: '/history/weighings', label: 'Pesagens' },
-                  { to: '/history/applications', label: 'Aplicações' },
-                  { to: '/history/refills', label: 'Abastecimentos' },
-                  { to: '/history/allocations', label: 'Lotações' },
-                  { to: '/history/memberships', label: 'Pertencimentos' },
-                  { to: '/history/passages', label: 'Passagens (GMD)' },
-                  { to: '/history/transfers', label: 'Transferências' },
-                ]}
-              />
-            ),
-          },
+          { path: 'stock', element: <StockList /> },
+          { path: 'history', element: <HistoryList /> },
           {
             path: 'gmd',
             element: (

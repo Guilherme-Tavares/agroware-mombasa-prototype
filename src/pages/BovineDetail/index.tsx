@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronLeft, Beef, Pencil, Trash2, RotateCcw, Scale } from 'lucide-react'
+import { ChevronLeft, CircleSmall, Pencil, Trash2, RotateCcw, Scale } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { useFarmStore } from '@/store/useFarmStore'
@@ -53,7 +53,7 @@ export default function BovineDetail() {
     return (
       <div className="max-w-xl mx-auto">
         <EmptyState
-          icon={<Beef size={28} />}
+          icon={<CircleSmall size={28} />}
           title="Bovino não encontrado"
           description="O registro pode ter sido removido em definitivo."
           action={{ label: 'Voltar à lista', onClick: () => navigate('/bovines') }}
@@ -106,7 +106,7 @@ export default function BovineDetail() {
           <span className="w-20 h-20 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center shrink-0">
             {bovine.photoBase64
               ? <img src={bovine.photoBase64} alt="" className="w-full h-full object-cover" />
-              : <Beef size={28} className="text-gray-300" />}
+              : <CircleSmall size={28} className="text-gray-300" />}
           </span>
           <div className="flex flex-wrap gap-1.5">
             <Badge variant="info" size="sm">{bovine.sex === 'M' ? 'Macho' : 'Fêmea'}</Badge>

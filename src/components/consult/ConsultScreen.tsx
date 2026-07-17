@@ -22,12 +22,14 @@ interface ConsultScreenProps {
   onToggleInactive: () => void
   onNew?: () => void
   newLabel?: string
+  /** Alternador opcional (ex.: SegmentedTabs) entre o cabeçalho e a busca. */
+  tabs?: ReactNode
   children: ReactNode
 }
 
 export default function ConsultScreen({
   title, subtitle, count, search, onSearch, searchPlaceholder = 'Buscar...',
-  showInactive, onToggleInactive, onNew, newLabel = 'Novo', children,
+  showInactive, onToggleInactive, onNew, newLabel = 'Novo', tabs, children,
 }: ConsultScreenProps) {
   const navigate = useNavigate()
 
@@ -58,6 +60,9 @@ export default function ConsultScreen({
           </button>
         )}
       </div>
+
+      {/* Alternador opcional de abas */}
+      {tabs && <div className="mb-4">{tabs}</div>}
 
       {/* Controls */}
       <div className="flex items-center gap-2 mb-4">
