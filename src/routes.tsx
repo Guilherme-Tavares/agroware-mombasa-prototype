@@ -3,7 +3,6 @@ import { createBrowserRouter } from 'react-router-dom'
 import AppShell, { ProtectedRoute } from '@/components/layout/AppShell.tsx'
 import RouteFallback from '@/components/layout/RouteFallback.tsx'
 import RouteError from '@/components/RouteError.tsx'
-import PlaceholderScreen from '@/components/PlaceholderScreen.tsx'
 import Login from '@/pages/Login/index.tsx'
 
 // Telas carregadas sob demanda (code-splitting por rota) vêm de `@/lazyPages`.
@@ -26,7 +25,7 @@ import {
   SaleLotRegister, SaleLotList, SaleLotDetail, SaleRegister, SaleList, SaleDetail,
   HerdAllocation, MapBaseConfig, WeighingHistory, ApplicationHistory, RefillHistory,
   AllocationHistory, MembershipHistory, PassageHistory, TransferHistory, HistoryList,
-  Profile, Settings, Access, FeedTroughDetail, DevComponents,
+  Profile, Settings, Access, FeedTroughDetail, DevComponents, GMD,
 } from '@/lazyPages.ts'
 
 export const router = createBrowserRouter([
@@ -145,20 +144,11 @@ export const router = createBrowserRouter([
           { path: 'medication-stock/new', element: <MedicationStockRegister /> },
           { path: 'feed-stock', element: <FeedStockList /> },
           { path: 'feed-stock/new', element: <FeedStockRegister /> },
-          // Telas provisórias (serão consolidadas/implementadas depois):
-          // Estoques e Históricos unificarão as telas atuais num alternador; GMD
-          // ganhará gráfico e lógica própria. Ver PlaceholderScreen.
+          // Telas consolidadas: Estoques e Históricos unificam as telas de origem
+          // num alternador; GMD projeta a evolução de peso do lote por temporada.
           { path: 'stock', element: <StockList /> },
           { path: 'history', element: <HistoryList /> },
-          {
-            path: 'gmd',
-            element: (
-              <PlaceholderScreen
-                title="GMD"
-                note="Ganho médio diário — gráfico e análise com lógica própria. Em construção."
-              />
-            ),
-          },
+          { path: 'gmd', element: <GMD /> },
           { path: 'profile', element: <Profile /> },
           { path: 'settings', element: <Settings /> },
           { path: 'access', element: <Access /> },

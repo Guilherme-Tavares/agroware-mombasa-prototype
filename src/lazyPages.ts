@@ -60,6 +60,7 @@ export const FeedStockRegister = lazy(() => import('@/pages/FeedStockRegister/in
 export const FeedStockList = lazy(() => import('@/pages/FeedStockList/index.tsx'))
 export const StockList = lazy(() => import('@/pages/StockList/index.tsx'))
 export const HistoryList = lazy(() => import('@/pages/HistoryList/index.tsx'))
+export const GMD = lazy(() => import('@/pages/GMD/index.tsx'))
 export const WeighingRegister = lazy(() => import('@/pages/WeighingRegister/index.tsx'))
 export const SeasonPassageRegister = lazy(() => import('@/pages/SeasonPassageRegister/index.tsx'))
 export const MedicationApplicationRegister = lazy(() => import('@/pages/MedicationApplicationRegister/index.tsx'))
