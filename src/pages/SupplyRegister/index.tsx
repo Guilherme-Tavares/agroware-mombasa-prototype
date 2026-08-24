@@ -112,7 +112,7 @@ export default function SupplyRegister() {
   return (
     <FormScreen
       title="Abastecer cocho"
-      subtitle="Reabastece o cocho, alimenta o Sistema HP e debita o estoque"
+      subtitle="Reabastece o cocho, renova a autonomia e debita o estoque"
       submitLabel="Abastecer"
       onSubmit={handleSave}
       saving={saving}

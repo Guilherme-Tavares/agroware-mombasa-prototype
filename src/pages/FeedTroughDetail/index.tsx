@@ -457,7 +457,7 @@ export default function FeedTroughDetail() {
         <div className="flex items-center gap-2 mb-4">
           <Droplets size={15} className={colors.text} />
           <span className="text-caption uppercase tracking-wide text-gray-500 font-medium">
-            Sistema HP
+            Autonomia do cocho
           </span>
         </div>
         <HPHero

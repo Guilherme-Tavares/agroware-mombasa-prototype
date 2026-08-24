@@ -341,7 +341,7 @@ export interface Refill {
   date: string
   amount: number
   feedId: string
-  /** taxa_consumo_kg_dia, alimenta o Sistema HP. */
+  /** taxa_consumo_kg_dia, alimenta a autonomia do cocho (RF77). */
   consumptionRate?: number
   remainingKg?: number
   depleted?: boolean

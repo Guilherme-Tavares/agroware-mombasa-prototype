@@ -103,13 +103,13 @@ export default function TroughDetail() {
         <DataRow label="Último abastecimento" value={trough.lastRefillDate ? formatDate(trough.lastRefillDate) : '—'} />
       </div>
 
-      {/* Operacional: Sistema HP / abastecer */}
+      {/* Operacional: autonomia do cocho e abastecimento */}
       <button
         onClick={() => navigate(`/feed-troughs/${trough.id}`)}
         className="mt-4 w-full flex items-center gap-3 p-4 rounded-2xl border border-primary/20 bg-primary-bg text-left hover:bg-primary/10 transition-colors"
       >
         <Gauge size={18} className="text-primary shrink-0" />
-        <span className="flex-1 text-body text-gray-900">Sistema HP e abastecimento</span>
+        <span className="flex-1 text-body text-gray-900">Autonomia e abastecimento</span>
         <span className="text-caption text-primary font-medium">Abrir</span>
       </button>
 

@@ -583,8 +583,8 @@ function TroughDetail({ id, onClose, onStartReposition }: { id: string; onClose:
             : trough.material === 'madeira' ? 'Madeira' : 'Metal'}</Badge>
         </div>
 
-        {/* Sistema HP visualization */}
-        <Section icon={<Activity size={14} />} title="Sistema HP">
+        {/* Autonomia do cocho: nível restante e previsão de esgotamento */}
+        <Section icon={<Activity size={14} />} title="Autonomia do cocho">
           <div className="flex items-end justify-between mb-2">
             <span className={`font-data text-display ${hpTextColor[status]} tabular-nums`}>
               {Math.round(pct)}<span className="text-h2 ml-0.5">%</span>
@@ -652,7 +652,7 @@ function TroughDetail({ id, onClose, onStartReposition }: { id: string; onClose:
           iconPosition="right"
           onClick={() => navigate(`/feed-troughs/${trough.id}`)}
         >
-          Abrir Sistema HP completo
+          Abrir autonomia completa
         </Button>
         {trough.divisionId !== '' && (
           <RemoveRow

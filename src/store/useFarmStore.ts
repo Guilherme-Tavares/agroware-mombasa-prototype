@@ -550,7 +550,7 @@ export const useFarmStore = create<FarmState>()(
           ),
         })),
 
-      // Abastecimento (RF30): atualiza o cocho (alimentando o Sistema HP via
+      // Abastecimento (RF30): atualiza o cocho (alimentando a autonomia via
       // currentAmount/consumptionRate) e debita do estoque de alimento o delta
       // efetivamente adicionado (novo total − saldo anterior). `refill.amount`
       // permanece o total do abastecimento, usado pelo gráfico de evolução HP.
