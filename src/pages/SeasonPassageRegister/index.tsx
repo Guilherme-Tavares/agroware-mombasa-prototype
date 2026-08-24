@@ -93,6 +93,7 @@ export default function SeasonPassageRegister() {
         seasonId: fields.seasonId,
         initialWeight: Number(fields.initialWeight),
         finalWeight: Number(fields.finalWeight),
+        headCount: fields.headCount ? Number(fields.headCount) : undefined,
         days: Number(fields.days),
         gmd: Number(gmd.toFixed(3)),
         active: true,

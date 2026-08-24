@@ -447,9 +447,9 @@ const seasons: Season[] = [
 ]
 
 const seasonPassages: SeasonPassage[] = [
-  { id: 'sp_01', herdId: 'herd_02', seasonId: 'season_01', initialWeight: 220, finalWeight: 320, days: 153, gmd: Number(((320 - 220) / 153).toFixed(3)), ...audit },
-  { id: 'sp_02', herdId: 'herd_01', seasonId: 'season_02', initialWeight: 195, finalWeight: 285, days: 122, gmd: Number(((285 - 195) / 122).toFixed(3)), ...audit },
-  { id: 'sp_03', herdId: 'herd_02', seasonId: 'season_02', initialWeight: 320, finalWeight: 420, days: 109, gmd: Number(((420 - 320) / 109).toFixed(3)), ...audit },
+  { id: 'sp_01', herdId: 'herd_02', seasonId: 'season_01', initialWeight: 220, finalWeight: 320, headCount: 40, days: 153, gmd: Number(((320 - 220) / 153).toFixed(3)), ...audit },
+  { id: 'sp_02', herdId: 'herd_01', seasonId: 'season_02', initialWeight: 195, finalWeight: 285, headCount: 25, days: 122, gmd: Number(((285 - 195) / 122).toFixed(3)), ...audit },
+  { id: 'sp_03', herdId: 'herd_02', seasonId: 'season_02', initialWeight: 320, finalWeight: 420, headCount: 40, days: 109, gmd: Number(((420 - 320) / 109).toFixed(3)), ...audit },
 ]
 
 // ─── Medicamentos e estoque ───────────────────────────────────────────────────

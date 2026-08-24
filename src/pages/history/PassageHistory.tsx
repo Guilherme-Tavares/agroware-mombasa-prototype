@@ -43,7 +43,7 @@ export default function PassageHistory() {
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-body font-medium text-gray-900 truncate">{herdName(p.herdId)}</p>
-                <p className="text-caption text-gray-400 truncate">{seasonName(p.seasonId)} · {p.initialWeight}→{p.finalWeight} kg · {p.days} dias</p>
+                <p className="text-caption text-gray-400 truncate">{seasonName(p.seasonId)} · {p.initialWeight}→{p.finalWeight} kg · {p.days} dias{p.headCount ? ` · ${p.headCount} cab` : ''}</p>
               </div>
               <Badge variant="ok" size="sm">{formatGMD(p.gmd)}</Badge>
             </div>

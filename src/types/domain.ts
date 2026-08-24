@@ -332,6 +332,8 @@ export interface SeasonPassage extends AuditFields {
   seasonId: string
   initialWeight: number
   finalWeight: number
+  /** numero_cabecas: fotografia do lote no momento da passagem. */
+  headCount?: number
   days: number
   gmd: number
 }

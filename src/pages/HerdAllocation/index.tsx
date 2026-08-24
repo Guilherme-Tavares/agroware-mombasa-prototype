@@ -94,7 +94,7 @@ export default function HerdAllocation() {
   }
 
   function herdStats(herdId: string) {
-    const inHerd = bovines.filter((b) => b.herdId === herdId)
+    const inHerd = bovines.filter((b) => b.herdId === herdId && b.active !== false)
     const headCount = inHerd.length
     const avgWeight = headCount > 0
       ? inHerd.reduce((s, b) => s + b.currentWeight, 0) / headCount

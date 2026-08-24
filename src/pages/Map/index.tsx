@@ -28,6 +28,7 @@ import {
 } from '@/utils/format.ts'
 import { calculateHPPercentage } from '@/utils/hp-system.ts'
 import { polygonsOverlap, polygonContains } from '@/utils/geometry.ts'
+import { countActiveHeads } from '@/utils/herd.ts'
 import { polyToGeo, polyToViewbox, pointToGeo, pointToViewbox } from '@/utils/projection.ts'
 import type { Point, GeoPoint } from '@/types/domain'
 
@@ -395,6 +396,7 @@ export default function MapPage() {
           herdId:     elementId,
           divisionId,
           startDate:  new Date().toISOString().split('T')[0],
+          headCount:  countActiveHeads(bovines, elementId),
           active:     true,
           createdAt:  new Date().toISOString(),
           updatedAt:  new Date().toISOString(),
@@ -406,6 +408,7 @@ export default function MapPage() {
           herdId:     elementId,
           divisionId,
           startDate:  new Date().toISOString().split('T')[0],
+          headCount:  countActiveHeads(bovines, elementId),
           active:     true,
           createdAt:  new Date().toISOString(),
           updatedAt:  new Date().toISOString(),
@@ -439,6 +442,7 @@ export default function MapPage() {
           herdId:    elementId,
           divisionId,
           startDate: new Date().toISOString().split('T')[0],
+          headCount: countActiveHeads(bovines, elementId),
           active:    true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -449,6 +453,7 @@ export default function MapPage() {
           herdId:    elementId,
           divisionId,
           startDate: new Date().toISOString().split('T')[0],
+          headCount: countActiveHeads(bovines, elementId),
           active:    true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
