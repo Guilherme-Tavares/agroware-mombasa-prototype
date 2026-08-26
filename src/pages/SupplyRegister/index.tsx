@@ -188,7 +188,7 @@ export default function SupplyRegister() {
             <div className="flex items-center gap-2 text-primary">
               <Droplets size={15} />
               <span className="text-caption">
-                HP após abastecer: <strong className="font-data tabular-nums">{Math.round(previewPct)}%</strong> · {HP_LABEL[previewStatus]}
+                Nível após abastecer: <strong className="font-data tabular-nums">{Math.round(previewPct)}%</strong> · {HP_LABEL[previewStatus]}
                 {remainingDays != null && <> · ~{remainingDays} dias</>}
               </span>
             </div>
