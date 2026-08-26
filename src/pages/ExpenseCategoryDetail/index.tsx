@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useAccess } from '@/hooks/useAccess'
+import AccessDenied from '@/components/ui/AccessDenied.tsx'
 import { useToast } from '@/hooks/useToast'
 import { formatDate, formatCurrency } from '@/utils/format'
 import { EXPENSE_GROUP_LABEL } from '@/utils/labels'
@@ -40,6 +41,12 @@ export default function ExpenseCategoryDetail() {
     [expenses, id],
   )
   const total = catExpenses.reduce((s, e) => s + e.amount, 0)
+
+  // Financeiro é exclusivo do produtor (escopo §6.2): a leitura também, não
+  // apenas o lançamento.
+  if (!can.finance) {
+    return <AccessDenied title="Categoria de despesa" width="wide" />
+  }
 
   if (!category) {
     return (

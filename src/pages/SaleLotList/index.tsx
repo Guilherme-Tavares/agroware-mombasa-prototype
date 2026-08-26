@@ -5,6 +5,7 @@ import { Package, ChevronRight } from 'lucide-react'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useAccess } from '@/hooks/useAccess'
+import AccessDenied from '@/components/ui/AccessDenied.tsx'
 import { cn } from '@/utils/cn'
 import ConsultScreen from '@/components/consult/ConsultScreen.tsx'
 import Badge from '@/components/ui/Badge.tsx'
@@ -31,6 +32,12 @@ export default function SaleLotList() {
       .filter((l) => !q || l.identifier.toLowerCase().includes(q))
       .sort((a, b) => a.identifier.localeCompare(b.identifier))
   }, [saleLots, farm, showInactive, search])
+
+  // Financeiro é exclusivo do produtor (escopo §6.2): a leitura também, não
+  // apenas o lançamento.
+  if (!can.finance) {
+    return <AccessDenied title="Lotes comerciais" width="wide" />
+  }
 
   return (
     <ConsultScreen

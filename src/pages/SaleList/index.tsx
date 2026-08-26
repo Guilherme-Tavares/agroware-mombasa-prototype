@@ -5,6 +5,7 @@ import { Tag, ChevronRight } from 'lucide-react'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useAccess } from '@/hooks/useAccess'
+import AccessDenied from '@/components/ui/AccessDenied.tsx'
 import { formatDate, formatCurrency } from '@/utils/format'
 import ConsultScreen from '@/components/consult/ConsultScreen.tsx'
 import EmptyState from '@/components/ui/EmptyState.tsx'
@@ -32,6 +33,12 @@ export default function SaleList() {
   }, [sales, farm, showInactive, search])
 
   const total = filtered.filter((s) => s.active !== false).reduce((sum, s) => sum + (s.totalValue ?? 0), 0)
+
+  // Financeiro é exclusivo do produtor (escopo §6.2): a leitura também, não
+  // apenas o lançamento.
+  if (!can.finance) {
+    return <AccessDenied title="Vendas" width="wide" />
+  }
 
   return (
     <ConsultScreen

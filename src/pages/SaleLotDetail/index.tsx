@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useAccess } from '@/hooks/useAccess'
+import AccessDenied from '@/components/ui/AccessDenied.tsx'
 import { useToast } from '@/hooks/useToast'
 import { formatWeight, formatArrobas, formatCurrency, formatDate } from '@/utils/format'
 import Button from '@/components/ui/Button.tsx'
@@ -44,6 +45,12 @@ export default function SaleLotDetail() {
   }, [lotBovineLinks, bovines, id])
   const totalWeight = members.reduce((s, b) => s + b.currentWeight, 0)
   const sale = sales.find((s) => s.saleLotId === id)
+
+  // Financeiro é exclusivo do produtor (escopo §6.2): a leitura também, não
+  // apenas o lançamento.
+  if (!can.finance) {
+    return <AccessDenied title="Lote comercial" width="wide" />
+  }
 
   if (!lot) {
     return (

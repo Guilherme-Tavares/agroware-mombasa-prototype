@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useAccess } from '@/hooks/useAccess'
+import AccessDenied from '@/components/ui/AccessDenied.tsx'
 import { useToast } from '@/hooks/useToast'
 import { formatDate, formatCurrency } from '@/utils/format'
 import { EXPENSE_GROUP_LABEL } from '@/utils/labels'
@@ -36,6 +37,12 @@ export default function ExpenseDetail() {
   const updateExpense = useFarmStore((s) => s.updateExpense)
 
   const [confirmRemove, setConfirmRemove] = useState(false)
+
+  // Financeiro é exclusivo do produtor (escopo §6.2): a leitura também, não
+  // apenas o lançamento.
+  if (!can.finance) {
+    return <AccessDenied title="Despesa" width="wide" />
+  }
 
   if (!expense) {
     return (

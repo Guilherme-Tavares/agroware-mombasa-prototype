@@ -5,6 +5,7 @@ import { Receipt, ChevronRight } from 'lucide-react'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useAccess } from '@/hooks/useAccess'
+import AccessDenied from '@/components/ui/AccessDenied.tsx'
 import { formatDate, formatCurrency } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import ConsultScreen from '@/components/consult/ConsultScreen.tsx'
@@ -34,6 +35,12 @@ export default function ExpenseList() {
   }, [expenses, farm, showInactive, search])
 
   const total = filtered.filter((e) => e.active !== false).reduce((s, e) => s + e.amount, 0)
+
+  // Financeiro é exclusivo do produtor (escopo §6.2): a leitura também, não
+  // apenas o lançamento.
+  if (!can.finance) {
+    return <AccessDenied title="Despesas" width="wide" />
+  }
 
   return (
     <ConsultScreen

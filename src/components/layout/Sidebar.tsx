@@ -114,10 +114,10 @@ const NAV_SECTIONS: { title?: string; items: NavItem[] }[] = [
   {
     title: 'Financeiro',
     items: [
-      { to: '/sales', label: 'Vendas', icon: <Tag size={18} />, end: true },
-      { to: '/sale-lots', label: 'Lotes comerciais', icon: <Package size={18} />, end: true },
-      { to: '/expenses', label: 'Despesas', icon: <Receipt size={18} />, end: true },
-      { to: '/expense-categories', label: 'Categorias', icon: <DollarSign size={18} />, end: true },
+      { to: '/sales', label: 'Vendas', icon: <Tag size={18} />, end: true, requires: 'finance' },
+      { to: '/sale-lots', label: 'Lotes comerciais', icon: <Package size={18} />, end: true, requires: 'finance' },
+      { to: '/expenses', label: 'Despesas', icon: <Receipt size={18} />, end: true, requires: 'finance' },
+      { to: '/expense-categories', label: 'Categorias', icon: <DollarSign size={18} />, end: true, requires: 'finance' },
     ],
   },
   {

@@ -4,6 +4,8 @@ import { ChevronLeft, Tag, Package } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { useFarmStore } from '@/store/useFarmStore'
+import { useAccess } from '@/hooks/useAccess'
+import AccessDenied from '@/components/ui/AccessDenied.tsx'
 import { formatDate, formatCurrency, formatWeight } from '@/utils/format'
 import Badge from '@/components/ui/Badge.tsx'
 import EmptyState from '@/components/ui/EmptyState.tsx'
@@ -20,9 +22,16 @@ function DataRow({ label, value }: { label: string; value: ReactNode }) {
 export default function SaleDetail() {
   const navigate = useNavigate()
   const { id }   = useParams<{ id: string }>()
+  const { can }  = useAccess()
 
   const sale     = useFarmStore((s) => s.sales.find((x) => x.id === id))
   const saleLots = useFarmStore((s) => s.saleLots)
+
+  // Financeiro é exclusivo do produtor (escopo §6.2): a leitura também, não
+  // apenas o lançamento.
+  if (!can.finance) {
+    return <AccessDenied title="Venda" width="wide" />
+  }
 
   if (!sale) {
     return (

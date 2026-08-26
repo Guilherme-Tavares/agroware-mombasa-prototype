@@ -5,6 +5,7 @@ import { DollarSign, ChevronRight } from 'lucide-react'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useAccess } from '@/hooks/useAccess'
+import AccessDenied from '@/components/ui/AccessDenied.tsx'
 import { EXPENSE_GROUP_LABEL } from '@/utils/labels'
 import { cn } from '@/utils/cn'
 import ConsultScreen from '@/components/consult/ConsultScreen.tsx'
@@ -28,6 +29,12 @@ export default function ExpenseCategoryList() {
       .filter((c) => !q || c.name.toLowerCase().includes(q) || (EXPENSE_GROUP_LABEL[c.group] ?? c.group).toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [categories, farm, showInactive, search])
+
+  // Financeiro é exclusivo do produtor (escopo §6.2): a leitura também, não
+  // apenas o lançamento.
+  if (!can.finance) {
+    return <AccessDenied title="Categorias de despesa" width="wide" />
+  }
 
   return (
     <ConsultScreen
