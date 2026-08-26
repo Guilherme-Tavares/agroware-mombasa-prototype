@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronLeft, Download, Trash2, MapPin, Layers, WifiOff } from 'lucide-react'
+import { ChevronLeft, Download, Trash2, MapPin, Layers, WifiOff, Satellite } from 'lucide-react'
 
 import { useFarmStore } from '@/store/useFarmStore'
 import { useToast } from '@/hooks/useToast'
@@ -11,12 +11,14 @@ import {
 import { countTiles, clearTiles } from '@/lib/idb'
 import { formatArea, formatDateTime } from '@/utils/format'
 import Button from '@/components/ui/Button.tsx'
-import Select from '@/components/ui/Select.tsx'
 
-// Poucos níveis de zoom, restritos à área da propriedade (RF36 — volume modesto).
+// Poucos níveis de zoom, restritos à área da propriedade (RF36, volume modesto).
 const ZOOM_MIN = 13
 const ZOOM_MAX = 16
 const TILE_CAP = 400
+
+// O satélite é a única fonte do mapa real; a camada de ruas foi descontinuada.
+const SOURCE_ID: TileSourceId = 'satelite'
 
 export default function MapBaseConfig() {
   const navigate   = useNavigate()
@@ -24,7 +26,6 @@ export default function MapBaseConfig() {
   const farm       = useFarmStore((s) => s.farm)
   const updateFarm = useFarmStore((s) => s.updateFarm)
 
-  const [sourceId, setSourceId]   = useState<TileSourceId>('satelite')
   const [downloading, setDownloading] = useState(false)
   const [progress, setProgress]   = useState({ done: 0, total: 0 })
   const [cached, setCached]       = useState<number | null>(null)
@@ -48,7 +49,7 @@ export default function MapBaseConfig() {
     setProgress({ done: 0, total: estimatedTiles })
     try {
       const { stored, total } = await prefillTiles(
-        sourceId, bounds, ZOOM_MIN, ZOOM_MAX,
+        SOURCE_ID, bounds, ZOOM_MIN, ZOOM_MAX,
         (done, t) => setProgress({ done, total: t }),
         TILE_CAP,
       )
@@ -123,23 +124,17 @@ export default function MapBaseConfig() {
             </div>
           </div>
 
-          {/* Camada */}
-          <div className="p-5 flex flex-col gap-4">
+          {/* Camada: o satélite é a única fonte do mapa real */}
+          <div className="p-5 flex flex-col gap-2">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">
               Camada
             </p>
-            <Select
-              label="Fonte do mapa"
-              value={sourceId}
-              options={[
-                { value: 'satelite', label: 'Satélite (Esri)' },
-                { value: 'mapa', label: 'Mapa de ruas (OSM)' },
-              ]}
-              onChange={(e) => setSourceId(e.target.value as TileSourceId)}
-              disabled={downloading}
-            />
+            <div className="flex items-center gap-2 text-body text-gray-900">
+              <Satellite size={15} className="text-primary" />
+              {TILE_SOURCES[SOURCE_ID].label}
+            </div>
             <p className="text-caption text-gray-400">
-              {TILE_SOURCES[sourceId].attribution.replace(/<[^>]+>/g, '')}
+              {TILE_SOURCES[SOURCE_ID].attribution.replace(/<[^>]+>/g, '')}
             </p>
           </div>
 

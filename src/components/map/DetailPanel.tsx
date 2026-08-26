@@ -17,7 +17,7 @@ import {
   calculateStockingRate, getIdealStockingRate, getStockingStatus,
 } from '@/utils/stocking-rate.ts'
 import {
-  calculateHPPercentage, calculateRemainingDays, getHPStatus,
+  calculateHPPercentage, calculateRemainingDays, calculateExhaustionDate, getHPStatus,
 } from '@/utils/hp-system.ts'
 import type { SelectedElement } from './StylizedFarmMap.tsx'
 
@@ -554,6 +554,7 @@ function TroughDetail({ id, onClose, onStartReposition }: { id: string; onClose:
   const pct      = calculateHPPercentage(trough.currentAmount, trough.capacity)
   const status   = getHPStatus(pct)
   const days     = calculateRemainingDays(trough.currentAmount, trough.consumptionRate)
+  const exhaustionDate = calculateExhaustionDate(trough.currentAmount, trough.consumptionRate)
 
   const hpBgColor: Record<'ok' | 'warning' | 'alert', string> = {
     ok: 'bg-ok-bg', warning: 'bg-warning-bg', alert: 'bg-alert-bg',
@@ -603,6 +604,11 @@ function TroughDetail({ id, onClose, onStartReposition }: { id: string; onClose:
             {isFinite(days) ? `~${days} dia${days !== 1 ? 's' : ''} restante${days !== 1 ? 's' : ''}` : 'Consumo não definido'}
             {' · '}taxa {trough.consumptionRate} kg/dia
           </p>
+          {exhaustionDate && (
+            <p className="text-caption text-gray-500 mt-1">
+              Esgota em <strong className="text-gray-900">{formatDate(exhaustionDate.toISOString())}</strong>
+            </p>
+          )}
         </Section>
 
         {/* Alimento atual */}

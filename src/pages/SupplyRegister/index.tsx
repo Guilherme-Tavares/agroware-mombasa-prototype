@@ -179,7 +179,7 @@ export default function SupplyRegister() {
             onChange={(e) => set('consumptionRate', e.target.value)}
             onBlur={() => touch('consumptionRate')}
             error={err('consumptionRate')}
-            helperText="Alimenta o HP"
+            helperText="Alimenta a autonomia do cocho"
           />
         </div>
 

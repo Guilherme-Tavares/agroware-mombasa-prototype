@@ -8,7 +8,7 @@ import { format, parseISO, differenceInDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   ChevronLeft, Droplets, Activity, Wheat, History,
-  AlertTriangle, Clock, Package, Zap, Check,
+  AlertTriangle, Clock, Package, Zap, Check, CalendarClock,
 } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -18,7 +18,7 @@ import {
 import { useFarmStore } from '@/store/useFarmStore'
 import type { FeedTrough } from '@/types/domain'
 import {
-  calculateHPPercentage, calculateRemainingDays, getHPStatus,
+  calculateHPPercentage, calculateRemainingDays, calculateExhaustionDate, getHPStatus,
 } from '@/utils/hp-system'
 import { formatDate } from '@/utils/format'
 import Button from '@/components/ui/Button.tsx'
@@ -155,6 +155,8 @@ interface HPHeroProps {
 function HPHero({ pct, currentAmount, capacity, consumptionRate, status }: HPHeroProps) {
   const colors = HP_COLORS[status]
   const days   = calculateRemainingDays(currentAmount, consumptionRate)
+  // Previsão de esgotamento (RF77): a data que os dias restantes representam.
+  const exhaustionDate = calculateExhaustionDate(currentAmount, consumptionRate)
 
   const motionPct = useMotionValue(pct)
   const barWidth  = useTransform(motionPct, (v) => `${Math.max(0, Math.min(100, v))}%`)
@@ -269,6 +271,14 @@ function HPHero({ pct, currentAmount, capacity, consumptionRate, status }: HPHer
             <strong className="text-gray-900">{consumptionRate}</strong> kg/dia
           </span>
         </div>
+        {exhaustionDate && (
+          <div className="flex items-center gap-1.5">
+            <CalendarClock size={13} className="text-gray-400 shrink-0" />
+            <span className="text-body text-gray-700">
+              esgota em <strong className="text-gray-900">{formatDate(exhaustionDate.toISOString())}</strong>
+            </span>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -294,7 +304,7 @@ function PreviewBar({ pct, status }: { pct: number; status: 'ok' | 'warning' | '
     <div className={`rounded-xl p-4 ${colors.trackBg}`}>
       <div className="flex items-center justify-between mb-3">
         <span className="text-caption text-gray-500 font-medium uppercase tracking-wide">
-          HP após abastecimento
+          Nível após abastecimento
         </span>
         <Badge variant={STATUS_BADGE[status]}>{STATUS_LABEL[status]}</Badge>
       </div>
@@ -471,7 +481,7 @@ export default function FeedTroughDetail() {
 
       {/* ── Evolution chart ───────────────────────────────────────────── */}
       <SectionCard delay={0.1}>
-        <SectionHeader icon={<Activity size={14} />} title="Evolução do HP" />
+        <SectionHeader icon={<Activity size={14} />} title="Evolução do nível" />
         <ResponsiveContainer width="100%" height={110}>
           <AreaChart data={timeline} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
             <defs>

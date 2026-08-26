@@ -5,7 +5,7 @@ import { putTile, getTile } from './idb'
 // (RealFarmMap / OfflineTiles) e pela tela de configurar mapa base offline (RF36).
 // ──────────────────────────────────────────────────────────────────────────────
 
-export type TileSourceId = 'satelite' | 'mapa'
+export type TileSourceId = 'satelite'
 
 export interface TileSource {
   id: TileSourceId
@@ -16,8 +16,6 @@ export interface TileSource {
   maxNativeZoom: number
   /** Zoom máximo para cache offline (tilesForBounds). */
   maxZoom: number
-  /** Subdomínio fixo para o template {s} (OSM); satélite não usa. */
-  subdomain?: string
 }
 
 export const TILE_SOURCES: Record<TileSourceId, TileSource> = {
@@ -28,15 +26,6 @@ export const TILE_SOURCES: Record<TileSourceId, TileSource> = {
     attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics',
     maxNativeZoom: 16,
     maxZoom: 18,
-  },
-  mapa: {
-    id: 'mapa',
-    label: 'Mapa',
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxNativeZoom: 19,
-    maxZoom: 19,
-    subdomain: 'a',
   },
 }
 
@@ -77,7 +66,6 @@ export function buildTileUrl(source: TileSource, z: number, x: number, y: number
     .replace('{z}', String(z))
     .replace('{x}', String(x))
     .replace('{y}', String(y))
-    .replace('{s}', source.subdomain ?? 'a')
 }
 
 /**

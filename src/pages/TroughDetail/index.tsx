@@ -94,7 +94,7 @@ export default function TroughDetail() {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <DataRow label="Nível (HP)" value={<Badge variant={HP_VARIANT[status]} size="sm">{Math.round(pct)}%</Badge>} />
+        <DataRow label="Nível" value={<Badge variant={HP_VARIANT[status]} size="sm">{Math.round(pct)}%</Badge>} />
         <DataRow label="Conteúdo" value={<span className="font-data tabular-nums">{trough.currentAmount} / {trough.capacity} kg</span>} />
         <DataRow label="Alimento atual" value={feedName ?? '—'} />
         <DataRow label="Consumo" value={`${trough.consumptionRate} kg/dia`} />
