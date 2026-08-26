@@ -9,12 +9,13 @@ import type { AccessLevel, User } from '@/types/domain'
 //
 //   produtor    → tudo
 //   colaborador → escrita no manejo zootécnico; sem usuários, financeiro,
-//                 demarcação, transferência de bovino ou de posse
-//   visitante   → somente leitura (consulta e exportação de relatórios)
+//                 relatórios, demarcação, transferência de bovino ou de posse
+//   visitante   → somente leitura das telas de consulta, painel inicial, mapa e
+//                 notificações; sem relatórios nem projeção de desempenho
 // ──────────────────────────────────────────────────────────────────────────────
 
 export interface AccessCapabilities {
-  /** Consultar dados e exportar relatórios. Sempre verdadeiro. */
+  /** Consultar os dados de manejo da propriedade. Sempre verdadeiro. */
   read: boolean
   /** Criar/editar/remover no manejo zootécnico (bovinos, rebanhos, divisões,
    *  lotações, pertencimentos, pesagens, aplicações, abastecimentos, agenda). */
@@ -27,6 +28,9 @@ export interface AccessCapabilities {
   demarcate: boolean
   /** Transferir bovino entre propriedades e transferir a posse. */
   transfer: boolean
+  /** Emitir e exportar relatórios, e projetar evolução de peso (escopo §6.2,
+   *  decisão 17): leitura agregada de gestão, restrita ao produtor. */
+  reports: boolean
 }
 
 export interface AccessInfo {
@@ -40,12 +44,12 @@ export interface AccessInfo {
 function capabilitiesFor(level: AccessLevel): AccessCapabilities {
   switch (level) {
     case 'produtor':
-      return { read: true, writeHusbandry: true, manageUsers: true, finance: true, demarcate: true, transfer: true }
+      return { read: true, writeHusbandry: true, manageUsers: true, finance: true, demarcate: true, transfer: true, reports: true }
     case 'colaborador':
-      return { read: true, writeHusbandry: true, manageUsers: false, finance: false, demarcate: false, transfer: false }
+      return { read: true, writeHusbandry: true, manageUsers: false, finance: false, demarcate: false, transfer: false, reports: false }
     case 'visitante':
     default:
-      return { read: true, writeHusbandry: false, manageUsers: false, finance: false, demarcate: false, transfer: false }
+      return { read: true, writeHusbandry: false, manageUsers: false, finance: false, demarcate: false, transfer: false, reports: false }
   }
 }
 

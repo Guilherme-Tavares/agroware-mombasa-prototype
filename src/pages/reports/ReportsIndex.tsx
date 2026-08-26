@@ -6,6 +6,8 @@ import {
 import type { ReactNode } from 'react'
 
 import Badge from '@/components/ui/Badge.tsx'
+import AccessDenied from '@/components/ui/AccessDenied.tsx'
+import { useAccess } from '@/hooks/useAccess'
 
 interface ReportItem {
   to?: string
@@ -27,6 +29,12 @@ const REPORTS: ReportItem[] = [
 
 export default function ReportsIndex() {
   const navigate = useNavigate()
+  const { can } = useAccess()
+
+  // Relatórios são exclusivos do produtor (escopo §6.2, decisão 17).
+  if (!can.reports) {
+    return <AccessDenied title="Relatórios" width="wide" />
+  }
 
   return (
     <div className="max-w-2xl mx-auto">

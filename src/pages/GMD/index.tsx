@@ -9,12 +9,14 @@ import { addDays, addMonths, differenceInCalendarDays, format, parseISO } from '
 import { ptBR } from 'date-fns/locale'
 
 import { useFarmStore } from '@/store/useFarmStore'
+import { useAccess } from '@/hooks/useAccess'
 import type { Weighing, HerdPurpose, SeasonType } from '@/types/domain'
 import Card from '@/components/ui/Card.tsx'
 import Badge from '@/components/ui/Badge.tsx'
 import Select from '@/components/ui/Select.tsx'
 import Input from '@/components/ui/Input.tsx'
 import SegmentedTabs from '@/components/consult/SegmentedTabs.tsx'
+import AccessDenied from '@/components/ui/AccessDenied.tsx'
 import { cn } from '@/utils/cn'
 import { formatGMD, formatWeightLarge } from '@/utils/format'
 import {
@@ -72,6 +74,7 @@ export default function GMD() {
   const seasons = useFarmStore((s) => s.seasons)
   const weighings = useFarmStore((s) => s.weighings)
   const seasonPassages = useFarmStore((s) => s.seasonPassages)
+  const { can } = useAccess()
 
   const [lotType, setLotType] = useState<LotType>('rebanho')
   const [lotId, setLotId] = useState('')
@@ -200,6 +203,12 @@ export default function GMD() {
   }, [projection])
 
   const start = parseISO(startISO)
+
+  // Projeção de desempenho é exclusiva do produtor, como os relatórios
+  // (escopo §6.2, decisão 17). A guarda fica após os hooks, nunca antes.
+  if (!can.reports) {
+    return <AccessDenied title="GMD" width="wide" />
+  }
 
   return (
     <div className="max-w-2xl mx-auto">

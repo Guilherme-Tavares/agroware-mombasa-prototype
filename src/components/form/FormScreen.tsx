@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ShieldAlert } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import type { ReactNode } from 'react'
 import Button from '@/components/ui/Button.tsx'
+import AccessDenied, { ACCESS_DENIED_MESSAGE } from '@/components/ui/AccessDenied.tsx'
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Template de cadastro alinhado às convenções da rodada (escopo §7):
@@ -68,30 +69,14 @@ export default function FormScreen({
   saving = false,
   errorCount = 0,
   canWrite = true,
-  blockedMessage = 'Você não tem permissão para esta ação nesta propriedade.',
+  blockedMessage = ACCESS_DENIED_MESSAGE,
   children,
   submitDisabled = false,
 }: FormScreenProps) {
   const navigate = useNavigate()
 
   if (!canWrite) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, ease: 'easeOut' }}
-        className="max-w-xl mx-auto"
-      >
-        <div className="flex items-center gap-3 mb-6">
-          <BackButton onClick={() => navigate(-1)} />
-          <h1 className="text-title font-bold text-gray-900">{title}</h1>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex items-start gap-3">
-          <ShieldAlert size={18} className="text-gray-400 mt-0.5 shrink-0" />
-          <p className="text-caption text-gray-500">{blockedMessage}</p>
-        </div>
-      </motion.div>
-    )
+    return <AccessDenied title={title} message={blockedMessage} />
   }
 
   return (

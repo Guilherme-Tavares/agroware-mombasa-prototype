@@ -38,6 +38,8 @@ import {
   X,
 } from 'lucide-react'
 import { useUIStore } from '@/store/useUIStore'
+import { useAccess } from '@/hooks/useAccess'
+import type { AccessCapabilities } from '@/hooks/useAccess'
 import { useAuthStore } from '@/store/useAuthStore'
 import { cn } from '@/utils/cn'
 import AgrowareLogo from '@/assets/logo/AgrowareLogo.tsx'
@@ -47,6 +49,8 @@ interface NavItem {
   label: string
   icon: React.ReactNode
   end?: boolean
+  /** Capacidade exigida para o item aparecer. Ausente = visível a todos. */
+  requires?: keyof AccessCapabilities
 }
 
 const NAV_SECTIONS: { title?: string; items: NavItem[] }[] = [
@@ -93,7 +97,7 @@ const NAV_SECTIONS: { title?: string; items: NavItem[] }[] = [
   {
     title: 'Evolução',
     items: [
-      { to: '/gmd', label: 'GMD', icon: <TrendingUp size={18} />, end: true },
+      { to: '/gmd', label: 'GMD', icon: <TrendingUp size={18} />, end: true, requires: 'reports' },
       { to: '/seasons', label: 'Temporadas', icon: <CalendarRange size={18} />, end: true },
       { to: '/operations/season-passage', label: 'Passagem', icon: <Milestone size={18} /> },
     ],
@@ -119,7 +123,7 @@ const NAV_SECTIONS: { title?: string; items: NavItem[] }[] = [
   {
     title: 'Dados',
     items: [
-      { to: '/reports', label: 'Relatórios', icon: <BarChart2 size={18} /> },
+      { to: '/reports', label: 'Relatórios', icon: <BarChart2 size={18} />, requires: 'reports' },
       { to: '/history', label: 'Históricos', icon: <History size={18} />, end: true },
     ],
   },
@@ -157,6 +161,16 @@ export default function Sidebar() {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen)
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen)
   const logout = useAuthStore((s) => s.logout)
+  const { can } = useAccess()
+
+  // Esconde o que o nível do usuário não alcança, para o menu não oferecer
+  // destino que a tela vai negar (relatórios e projeção: escopo §6.2).
+  const visibleSections = NAV_SECTIONS
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => !item.requires || can[item.requires]),
+    }))
+    .filter((section) => section.items.length > 0)
 
   return (
     <>
@@ -191,7 +205,7 @@ export default function Sidebar() {
 
         {/* nav */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
-          {NAV_SECTIONS.map((section, i) => (
+          {visibleSections.map((section, i) => (
             <div key={section.title ?? `top-${i}`}>
               {section.title && (
                 <p className="px-3 mb-1.5 text-caption font-medium text-gray-400 uppercase tracking-wide">
@@ -201,7 +215,7 @@ export default function Sidebar() {
               <ul className="space-y-0.5">
                 {section.items.map((item) => (
                   <li key={item.to}>
-                    <NavItemLink {...item} />
+                    <NavItemLink to={item.to} label={item.label} icon={item.icon} end={item.end} />
                   </li>
                 ))}
               </ul>

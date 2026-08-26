@@ -1,12 +1,17 @@
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Download } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { useAccess } from '@/hooks/useAccess'
+import AccessDenied from '@/components/ui/AccessDenied.tsx'
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Template de relatório (Fase 8). Cabeçalho com voltar + título/subtítulo +
-// botão "Exportar CSV" (disponível inclusive ao visitante, conforme o escopo).
-// O corpo recebe filtros, resumo (KPIs) e a tabela como children. Cada relatório
-// monta seus dados e passa `onExport` para gerar o CSV.
+// botão "Exportar CSV". O corpo recebe filtros, resumo (KPIs) e a tabela como
+// children. Cada relatório monta seus dados e passa `onExport` para gerar o CSV.
+//
+// Guarda de acesso: a emissão de relatórios é exclusiva do produtor (escopo
+// §6.2, decisão 17), porque consolida informação de gestão. A guarda vive aqui
+// para valer, de uma vez, para os sete relatórios que usam este template.
 // ──────────────────────────────────────────────────────────────────────────────
 
 interface ReportScreenProps {
@@ -21,6 +26,11 @@ export default function ReportScreen({
   title, subtitle, onExport, exportDisabled = false, children,
 }: ReportScreenProps) {
   const navigate = useNavigate()
+  const { can } = useAccess()
+
+  if (!can.reports) {
+    return <AccessDenied title={title} width="wide" />
+  }
 
   return (
     <div className="max-w-2xl mx-auto">
