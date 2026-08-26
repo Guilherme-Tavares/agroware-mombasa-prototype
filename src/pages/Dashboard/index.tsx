@@ -560,7 +560,7 @@ function GMDPreview() {
 const QUICK_ACTIONS = [
   { icon: Plus,    label: 'Cadastrar Bovino', path: '/bovines/new',               color: 'primary' },
   { icon: Users,   label: 'Lotar Rebanho',    path: '/operations/allocation',     color: 'earth' },
-  { icon: Droplets,label: 'Abastecer Cocho',  path: '/feed-troughs/trough_03',   color: 'water' },
+  { icon: Droplets,label: 'Abastecer Cocho',  path: '/operations/supply',        color: 'water' },
   { icon: Map,     label: 'Ver Mapa',         path: '/map',                       color: 'primary' },
 ] as const
 

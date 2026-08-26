@@ -2,11 +2,14 @@ import { NavLink } from 'react-router-dom'
 import { Home, Map, PlusCircle, ArrowLeftRight, MoreHorizontal } from 'lucide-react'
 import { cn } from '@/utils/cn'
 
+// Os dois atalhos centrais levam direto às ações mais frequentes no celular, e
+// não a uma lista de grupo. Por isso o rótulo nomeia a ação, e não a família:
+// "Cadastrar" prometia um grupo de cadastros e abria o de bovino.
 const NAV_ITEMS = [
   { to: '/', label: 'Início', icon: Home, end: true },
   { to: '/map', label: 'Mapa', icon: Map, end: false },
-  { to: '/bovines/new', label: 'Cadastrar', icon: PlusCircle, end: false },
-  { to: '/operations/allocation', label: 'Operações', icon: ArrowLeftRight, end: false },
+  { to: '/bovines/new', label: 'Bovino', icon: PlusCircle, end: false },
+  { to: '/operations/allocation', label: 'Lotação', icon: ArrowLeftRight, end: false },
   { to: '/settings', label: 'Mais', icon: MoreHorizontal, end: false },
 ]
 
