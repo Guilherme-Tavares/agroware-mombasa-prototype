@@ -43,10 +43,7 @@ export const ptBR = {
     noAlertsTitle: 'Sem alertas',
     noAlertsBody: 'Todos os cochos e rebanhos estão em dia.',
     quickActions: 'Ações Rápidas',
-    gmdTitle:     'GMD — Últimos 30 dias',
-    gmdAvg:       'Média',
-    gmdMax:       'Máximo',
-    gmdMin:       'Mínimo',
+    gmdTitle:     'Projeção de peso do lote',
   },
 
   nav: {

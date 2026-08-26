@@ -21,7 +21,7 @@ import { cn } from '@/utils/cn'
 import { formatGMD, formatWeightLarge } from '@/utils/format'
 import {
   buildMonthClimate, buildProjection, suggestHerdGMD, calculateGMD,
-  FALLBACK_GMD, FEED_CONSUMPTION_PCT, SEASON_COLOR, SEASON_LABEL,
+  DEFAULT_MONTHS, FALLBACK_GMD, FEED_CONSUMPTION_PCT, SEASON_COLOR, SEASON_LABEL,
   type FeedVariant, type ProjectionPoint,
 } from '@/utils/gmd'
 
@@ -42,9 +42,6 @@ const INTERVALS: { value: IntervalKey; label: string; step: number }[] = [
 ]
 
 const DURATIONS = [1, 2, 3, 6, 9, 12] // meses
-
-/** Padrão de duração por fase (recria mais curta, engorda mais longa). */
-const DEFAULT_MONTHS: Record<HerdPurpose, number> = { recria: 3, engorda: 6, misto: 4 }
 
 function autoInterval(days: number): IntervalKey {
   if (days <= 21) return 'diario'

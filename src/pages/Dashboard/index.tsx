@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer,
+  Tooltip, ResponsiveContainer, ReferenceArea,
 } from 'recharts'
 import {
   Beef, AlertTriangle, TrendingUp, MapPin,
   Droplets, Users, Map, Plus,
   AlertCircle, Clock,
 } from 'lucide-react'
-import { format, differenceInDays, parseISO, subDays } from 'date-fns'
+import { addDays, addMonths, differenceInCalendarDays, differenceInDays, format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 import { useAuthStore } from '@/store/useAuthStore'
@@ -19,6 +19,12 @@ import Card from '@/components/ui/Card.tsx'
 import Badge from '@/components/ui/Badge.tsx'
 import Button from '@/components/ui/Button.tsx'
 import { greetingByHour, formatGMD } from '@/utils/format.ts'
+import { useAccess } from '@/hooks/useAccess'
+import { countActiveHeads } from '@/utils/herd.ts'
+import {
+  buildMonthClimate, buildProjection, suggestHerdGMD,
+  DEFAULT_MONTHS, FEED_CONSUMPTION_PCT, SEASON_COLOR,
+} from '@/utils/gmd.ts'
 import { t } from '@/i18n'
 
 // ─── Counter animation hook ───────────────────────────────────────────────────
@@ -378,70 +384,155 @@ function AlertList() {
   )
 }
 
-// ─── GMD Chart ────────────────────────────────────────────────────────────────
+// ─── Prévia da projeção de peso (RF76) ────────────────────────────────────────
 
-// Constrói uma série diária de 30 dias ancorada na GMD média real do rebanho
-// ativo. O dataset não guarda pesagens diárias datadas (SeasonPassage agrega em
-// gmd único), então a forma da curva é ilustrativa — mas o nível segue o dado.
-function buildGMDSeries(avgGMD: number, days = 30) {
-  const today = new Date()
-  const base = avgGMD > 0 ? avgGMD : 0.867
-  return Array.from({ length: days }, (_, i) => {
-    const d = subDays(today, days - 1 - i)
-    const variation = ((i % 7) - 3) * 0.022
-    const gmd = Math.max(0.65, Math.min(1.06, base + variation))
-    return {
-      day: format(d, 'dd/MM', { locale: ptBR }),
-      gmd: Number(gmd.toFixed(3)),
+// A tela inicial mostra uma prévia do gráfico definitivo de `/gmd`: mesma
+// projeção, mesmas cores por temporada, sem os controles. O lote escolhido é o
+// rebanho com mais cabeças ativas na propriedade, e a duração é a padrão da
+// fase. Restrita ao produtor, como a tela cheia (escopo §6.2, decisão 17).
+function GMDPreview() {
+  const navigate = useNavigate()
+  const farm     = useFarmStore((s) => s.farm)
+  const herds    = useFarmStore((s) => s.herds)
+  const bovines  = useFarmStore((s) => s.bovines)
+  const seasons  = useFarmStore((s) => s.seasons)
+  const passages = useFarmStore((s) => s.seasonPassages)
+  const { can }  = useAccess()
+
+  const lot = useMemo(() => {
+    const active = herds.filter((h) => h.farmId === farm?.id && h.active !== false)
+    let chosen: { herd: typeof active[number]; heads: number } | null = null
+    for (const herd of active) {
+      const heads = countActiveHeads(bovines, herd.id)
+      if (heads > 0 && (!chosen || heads > chosen.heads)) chosen = { herd, heads }
     }
-  })
-}
+    if (!chosen) return null
 
-function GMDChart({ avgGMD }: { avgGMD: number }) {
-  const gmdData = useMemo(() => buildGMDSeries(avgGMD), [avgGMD])
-  const gmdValues = gmdData.map((d) => d.gmd)
-  const gmdAvg = gmdValues.reduce((s, v) => s + v, 0) / gmdValues.length
-  const gmdMax = Math.max(...gmdValues)
-  const gmdMin = Math.min(...gmdValues)
+    const members = bovines.filter((b) => b.herdId === chosen!.herd.id && b.active !== false)
+    return {
+      name: chosen.herd.name,
+      purpose: chosen.herd.purpose,
+      headCount: chosen.heads,
+      initialTotalWeight: members.reduce((sum, b) => sum + b.currentWeight, 0),
+      gmd: suggestHerdGMD(
+        passages.filter((p) => p.herdId === chosen!.herd.id).map((p) => p.gmd),
+        chosen.herd.purpose,
+      ),
+    }
+  }, [herds, bovines, passages, farm])
+
+  const start = useMemo(() => new Date(), [])
+  const days  = useMemo(
+    () => (lot ? Math.max(1, differenceInCalendarDays(addMonths(start, DEFAULT_MONTHS[lot.purpose]), start)) : 0),
+    [lot, start],
+  )
+
+  const projection = useMemo(() => {
+    if (!lot) return null
+    return buildProjection(
+      {
+        startDate: start,
+        days,
+        headCount: lot.headCount,
+        initialTotalWeight: lot.initialTotalWeight,
+        gmdPerHead: lot.gmd,
+        monthClimate: buildMonthClimate(seasons),
+        feedPct: FEED_CONSUMPTION_PCT.proteinado,
+      },
+      7,
+    )
+  }, [lot, seasons, start, days])
+
+  const gradientStops = useMemo(() => {
+    if (!projection || days <= 0) return []
+    return projection.runs.flatMap((r) => [
+      { offset: r.startDay / days, color: SEASON_COLOR[r.season] },
+      { offset: (r.endDay + 1) / days, color: SEASON_COLOR[r.season] },
+    ])
+  }, [projection, days])
+
+  // A projeção consolida informação de gestão: fora do alcance dos demais níveis.
+  if (!can.reports) return null
+
+  if (!lot || !projection) {
+    return (
+      <Card>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-body font-medium text-gray-900">{t('dashboard.gmdTitle')}</h3>
+        </div>
+        <div className="py-8 text-center text-gray-400">
+          <TrendingUp size={26} className="mx-auto mb-2 opacity-40" />
+          <p className="text-caption">Cadastre um rebanho com animais para ver a projeção.</p>
+        </div>
+      </Card>
+    )
+  }
+
+  const finalPerHead = Math.round(projection.finalTotalWeight / lot.headCount)
 
   return (
-    <Card>
-      <div className="flex items-center justify-between mb-4">
+    <Card
+      className="cursor-pointer hover:shadow-floating transition-shadow"
+      onClick={() => navigate('/gmd')}
+    >
+      <div className="flex items-center justify-between mb-1">
         <h3 className="text-body font-medium text-gray-900">{t('dashboard.gmdTitle')}</h3>
-        <Badge variant="info">kg/dia</Badge>
+        <Badge variant="info">{formatGMD(lot.gmd)}</Badge>
       </div>
+      <p className="text-caption text-gray-400 mb-3">
+        {lot.name} · {lot.headCount} cab · {days} dias
+      </p>
 
       <ResponsiveContainer width="100%" height={180}>
-        <LineChart data={gmdData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
+        <LineChart data={projection.points} margin={{ top: 4, right: 8, bottom: 0, left: -8 }}>
+          <defs>
+            <linearGradient id="dash-gmd-stroke" x1="0" y1="0" x2="1" y2="0">
+              {gradientStops.map((s, i) => (
+                <stop key={i} offset={`${Math.max(0, Math.min(100, s.offset * 100))}%`} stopColor={s.color} />
+              ))}
+            </linearGradient>
+          </defs>
+
           <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" />
+
+          {projection.runs.map((r, i) => (
+            <ReferenceArea
+              key={i}
+              x1={r.startDay}
+              x2={r.endDay + 1}
+              fill={SEASON_COLOR[r.season]}
+              fillOpacity={0.05}
+              stroke="none"
+            />
+          ))}
+
           <XAxis
             dataKey="day"
+            type="number"
+            domain={[0, days]}
             tick={{ fontSize: 10, fill: '#9E9E9E' }}
             tickLine={false}
             axisLine={false}
-            interval={4}
+            tickFormatter={(d: number) => format(addDays(start, d), 'dd/MM', { locale: ptBR })}
           />
           <YAxis
-            domain={[0.55, 1.15]}
             tick={{ fontSize: 10, fill: '#9E9E9E' }}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(v: number) => v.toFixed(2)}
+            width={44}
+            domain={['dataMin - 200', 'dataMax + 200']}
+            tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}t` : String(Math.round(v)))}
           />
           <Tooltip
-            contentStyle={{
-              background: '#fff',
-              border: '1px solid #E0E0E0',
-              borderRadius: 8,
-              fontSize: 12,
-            }}
-            formatter={(value) => [formatGMD(Number(value)), 'GMD']}
+            contentStyle={{ background: '#fff', border: '1px solid #E0E0E0', borderRadius: 8, fontSize: 12 }}
+            labelFormatter={(d) => format(addDays(start, Number(d)), "dd 'de' MMM", { locale: ptBR })}
+            formatter={(value) => [`${Math.round(Number(value))} kg`, 'Peso do lote']}
           />
           <Line
             type="monotone"
-            dataKey="gmd"
-            stroke="#2E7D32"
-            strokeWidth={2}
+            dataKey="weightTotal"
+            stroke="url(#dash-gmd-stroke)"
+            strokeWidth={2.5}
             dot={false}
             activeDot={{ r: 4, fill: '#2E7D32' }}
           />
@@ -450,14 +541,12 @@ function GMDChart({ avgGMD }: { avgGMD: number }) {
 
       <div className="flex items-center justify-around mt-4 pt-3 border-t border-gray-100">
         {[
-          { label: t('dashboard.gmdAvg'), value: gmdAvg,  accent: 'text-gray-900' },
-          { label: t('dashboard.gmdMax'), value: gmdMax,  accent: 'text-primary' },
-          { label: t('dashboard.gmdMin'), value: gmdMin,  accent: 'text-gray-400' },
+          { label: 'Peso atual', value: `${Math.round(projection.points[0].weightTotal)} kg`, accent: 'text-gray-900' },
+          { label: 'Projetado', value: `${Math.round(projection.finalTotalWeight)} kg`, accent: 'text-primary' },
+          { label: 'Média/cab', value: `${finalPerHead} kg`, accent: 'text-gray-400' },
         ].map(({ label, value, accent }) => (
           <div key={label} className="text-center">
-            <p className={`font-data text-body font-medium tabular-nums ${accent}`}>
-              {formatGMD(value)}
-            </p>
+            <p className={`font-data text-body font-medium tabular-nums ${accent}`}>{value}</p>
             <p className="text-caption text-gray-400 mt-0.5">{label}</p>
           </div>
         ))}
@@ -613,8 +702,8 @@ export default function Dashboard() {
         <Card className="min-h-[340px]"><AlertList /></Card>
       </div>
 
-      {/* ── GMD Chart ── */}
-      <GMDChart avgGMD={avgGMD} />
+      {/* ── Prévia da projeção de peso ── */}
+      <GMDPreview />
 
       {/* ── Quick Actions ── */}
       <QuickActions />

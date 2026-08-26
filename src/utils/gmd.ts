@@ -52,6 +52,9 @@ export const SEASON_LABEL: Record<SeasonType, string> = {
   transicao: 'Transição',
 }
 
+/** Duração padrão da projeção, em meses, por fase do rebanho. */
+export const DEFAULT_MONTHS: Record<HerdPurpose, number> = { recria: 3, engorda: 6, misto: 4 }
+
 /** GMD base (kg/cab/dia) quando não há histórico de passagens para sugerir. */
 export const FALLBACK_GMD: Record<HerdPurpose, number> = {
   recria: 0.5,
